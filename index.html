@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CubeLab Timer｜無料のスピードキューブ用タイマー</title>
+<meta name="description" content="ルービックキューブなどのスピードキューブ用の無料タイマー。WCA種目とCTOのスクランブル・展開図、ao5/ao12の統計と内訳、BPA・WPA、2人対戦、WCA公式記録との比較、csTimerからのデータ移行に対応。">
+<meta property="og:title" content="CubeLab Timer｜無料のスピードキューブ用タイマー">
+<meta property="og:description" content="スクランブル・統計・2人対戦・WCA記録との比較ができる、登録不要の無料キューブタイマー。">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="alternate" hreflang="ja" href="https://cubelab-timer.github.io/">
+<link rel="alternate" hreflang="en" href="https://cubelab-timer.github.io/en/">
+<link rel="alternate" hreflang="x-default" href="https://cubelab-timer.github.io/en/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>:root{box-sizing:border-box}body{margin:0;padding:0}img{max-width:100%}[hidden]{display:none!important}
+body.running #siteFooter,body.running .adslot{visibility:hidden}</style>
+<link rel="stylesheet" href="footer.css">
+<script src="config.js"></script>
+<script src="site.js" defer></script>
+</head><body><link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: sticky tab bar, then one working surface per tab; timer tab = main pad + side rail */
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --surface2:#f5f7fa; --fg:#17202a; --muted:#5b6876; --line:#d6dde5;
+  --accent:#2453c2; --accent-weak:#e1e9fb; --good:#1d8a4a; --bad:#c43a3a; --warn:#b26f12;
+  --hold:#d13b3b; --ready:#17a052; --sticker-line:#1b2128;
+  --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1319; --surface:#161d25; --surface2:#1c2530; --fg:#e4eaf0; --muted:#93a0ae; --line:#2b3642;
+  --accent:#7fa4ff; --accent-weak:#1e2c4a; --good:#4cc47f; --bad:#ff7d7d; --warn:#e5b04d;
+  --hold:#ff6b6b; --ready:#4ad683; --sticker-line:#0b0e12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1319; --surface:#161d25; --surface2:#1c2530; --fg:#e4eaf0; --muted:#93a0ae; --line:#2b3642;
+  --accent:#7fa4ff; --accent-weak:#1e2c4a; --good:#4cc47f; --bad:#ff7d7d; --warn:#e5b04d;
+  --hold:#ff6b6b; --ready:#4ad683; --sticker-line:#0b0e12; color-scheme:dark}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.55}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+button.ghost{background:transparent}
+button:disabled{opacity:.45;cursor:default}
+select,input[type=text],input[type=number]{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
+input[type=number]{width:5.5em}
+label{color:var(--muted)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.topin{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:10px}
+.brand{font-family:var(--f-mono);font-weight:700;font-size:17px;letter-spacing:-.02em;white-space:nowrap}
+.brand span{color:var(--accent);margin-left:2px}
+.tabs{display:flex;gap:4px;overflow-x:auto;flex:1 1 auto;min-width:0}
+.tabs button{border:none;background:transparent;padding:6px 12px;border-radius:999px;white-space:nowrap;color:var(--muted)}
+.tabs button[aria-selected=true]{background:var(--accent-weak);color:var(--accent);font-weight:700}
+.evpick{display:flex;align-items:center;gap:6px}
+main{padding-block:16px 48px}
+.tab{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+h2{font-size:15px;margin:0 0 10px;text-wrap:balance}
+h3{font-size:13px;margin:0 0 8px;color:var(--muted);letter-spacing:.04em}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* timer */
+.tgrid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+@media (max-width:880px){.tgrid{grid-template-columns:minmax(0,1fr)}}
+.scrbar{display:flex;gap:10px;align-items:flex-start}
+.scr{flex:1;min-width:0;font-family:var(--f-mono);font-size:clamp(14px,1.9vw,19px);line-height:1.6;white-space:pre-line;word-break:break-word}
+/* megaminx: one line per "… U/U'" group, never wrapped; font size is fitted to the width in JS */
+.scr.mega{white-space:pre;word-break:normal;overflow-x:auto;flex-basis:100%}
+.scrbar:has(.scr.mega){flex-wrap:wrap}
+.tarea{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:clamp(170px,30vh,300px);touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;border-radius:12px}
+.tdisp{font-family:var(--f-mono);font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(64px,13vw,150px);line-height:1;letter-spacing:-.03em}
+.tdisp[data-st=hold]{color:var(--hold)}
+.tdisp[data-st=ready]{color:var(--ready)}
+.tdisp[data-st=insp],.tdisp[data-st=arm]{color:var(--warn)}
+.hint{margin-top:10px;color:var(--muted);font-size:12px;text-align:center}
+.lastbar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.diag{display:flex;justify-content:center;padding-top:8px;overflow-x:auto}
+.diag svg{max-width:100%;height:auto}
+.opts{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+.opts label{display:flex;gap:6px;align-items:center}
+body.running .dim{visibility:hidden}
+.qs{display:grid;grid-template-columns:auto 1fr 1fr;gap:2px 12px;margin:12px 0}
+.qs div{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.qs .h{color:var(--muted);font-family:var(--f-body);font-size:12px}
+.list{max-height:420px;overflow:auto;border-top:1px solid var(--line)}
+.list table{width:100%;border-collapse:collapse}
+.list td,.list th{padding:4px 6px;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px}
+.list th{position:sticky;top:0;background:var(--surface);color:var(--muted);font-family:var(--f-body);font-weight:500;font-size:12px}
+.list tr.s{cursor:pointer}
+.list tr.s:hover td{background:var(--surface2)}
+.list tr.sel td{background:var(--accent-weak)}
+.detail td{text-align:left!important;font-family:var(--f-body)!important;white-space:normal}
+.best{color:var(--good);font-weight:700}
+.dnf{color:var(--bad)}
+
+/* stats */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.tile{background:var(--surface2);border-radius:10px;padding:10px 12px}
+.tile b{display:block;font-family:var(--f-mono);font-size:20px;font-variant-numeric:tabular-nums}
+.tile span{color:var(--muted);font-size:12px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
+.tbl{overflow-x:auto}
+.tbl table{border-collapse:collapse;width:100%}
+.tbl th,.tbl td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl th{color:var(--muted);font-weight:500;font-size:12px}
+.tbl td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tbl td.t{font-family:var(--f-body)}
+.cond{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{border-radius:999px;padding:3px 10px;font-size:12px}
+.verdict{display:inline-block;border-radius:999px;padding:3px 12px;font-weight:700;font-size:13px}
+.verdict.yes{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)}
+.verdict.no{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
+.condres{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;border-radius:0;padding:4px 10px;background:transparent}
+.seg button[aria-pressed=true]{background:var(--accent-weak);color:var(--accent);font-weight:700}
+canvas{display:block;max-width:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+
+/* battle */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:620px){.duo{grid-template-columns:1fr}}
+.pl{background:var(--surface2);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;touch-action:none;user-select:none;-webkit-user-select:none;min-height:190px;justify-content:center;border:2px solid transparent}
+.pl.win{border-color:var(--good)}
+.pl .pt{font-family:var(--f-mono);font-weight:700;font-size:clamp(44px,8vw,84px);line-height:1;font-variant-numeric:tabular-nums}
+.pl .pt[data-st=hold]{color:var(--hold)} .pl .pt[data-st=ready]{color:var(--ready)} .pl .pt[data-st=insp],.pl .pt[data-st=arm]{color:var(--warn)}
+.pname{font-weight:700}
+.score{font-family:var(--f-mono);font-size:22px;font-weight:700}
+.roomcode{font-family:var(--f-mono);font-size:20px;font-weight:700;letter-spacing:.04em;background:var(--surface2);padding:4px 12px;border-radius:8px}
+.peer{display:flex;gap:8px;align-items:center;padding:4px 0}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.on{background:var(--good)} .dot.solving{background:var(--warn)}
+.note{background:var(--surface2);border-radius:10px;padding:10px 12px;color:var(--muted);font-size:13px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:20}
+textarea{width:100%;min-height:140px;font-family:var(--f-mono);font-size:12px;background:var(--surface2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;box-sizing:border-box}
+.nx{border-top:1px solid var(--line);padding:10px 0 12px}
+.nxg{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin-top:6px;align-items:baseline}
+.nxg .num{text-align:right}
+.tgchip{display:inline-block;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700;background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good);margin-top:6px}
+.steps{margin:4px 0 0;padding-left:1.5em}
+.steps>li{margin:0 0 12px;padding-left:4px}
+.steps>li::marker{font-weight:700;color:var(--accent)}
+.ico{width:1.3em;height:1.3em;vertical-align:-.3em}
+.bigbtn{display:inline-block;margin:6px 0 4px;background:var(--accent);color:var(--surface);font-weight:700;border-radius:10px;padding:10px 18px;cursor:pointer}
+.bigbtn:hover{filter:brightness(1.08)}
+.vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.dropzone.over{outline:2px dashed var(--accent);outline-offset:-6px}
+.howto{border-top:1px solid var(--line);padding:8px 0}
+.howto summary{cursor:pointer;font-weight:700;padding:4px 0}
+.howto ol{margin:6px 0 4px;padding-left:1.4em}
+.howto li{margin:3px 0}
+#bkNote{margin:10px 0 0}
+.avl{border:none;background:transparent;padding:0;border-radius:4px;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.avl:hover{color:var(--accent)}
+dialog.dlg{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--fg);padding:16px;width:min(560px,calc(100vw - 32px));max-height:min(80vh,640px);box-sizing:border-box;overflow-x:hidden}
+dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
+.picklist{max-height:min(46vh,420px);overflow:auto;border-top:1px solid var(--line);margin-top:8px}
+.pk{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,9.5em);gap:4px 10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--line)}
+.pk label{display:flex;flex-direction:column;color:var(--fg);cursor:pointer;min-width:0}
+.pk label b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pk select{width:100%}
+.avrow{display:grid;grid-template-columns:2.2em 5.5em minmax(0,1fr);gap:4px 10px;padding:6px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.avrow .num{text-align:right}
+.avrow.cut .tm{color:var(--muted)}
+.avrow .sc{font-family:var(--f-mono);font-size:12px;color:var(--muted);word-break:break-word;white-space:pre-line}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="top">
+  <div class="wrap topin">
+    <div class="brand">CubeLab<span>Timer</span></div><a class="langsw" href="en/" hreflang="en">English</a>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="timer" aria-selected="true">タイマー</button>
+      <button role="tab" data-tab="stats" aria-selected="false">統計</button>
+      <button role="tab" data-tab="local" aria-selected="false">2人対戦</button>
+      <button role="tab" data-tab="wca" aria-selected="false">WCA記録</button>
+      <button role="tab" data-tab="move" aria-selected="false">記録の移行</button>
+      <button role="tab" data-tab="data" aria-selected="false">種目</button>
+    </nav>
+    <div class="evpick"><label for="evSel">種目</label><select id="evSel"></select><button id="evAdd" class="ghost" title="種目を追加">＋</button></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- TIMER -->
+  <section class="tab" id="tab-timer">
+    <div class="tgrid">
+      <div class="card">
+        <div class="scrbar dim"><div id="scr" class="scr"></div><button id="scrNext" title="別の手順にする">次の手順</button></div>
+        <div id="tarea" class="tarea"><div id="tdisp" class="tdisp">0.00</div><div class="hint dim" id="thint">スペースキーを長押し → 緑になったら離してスタート／何かキーで停止（スマホは画面を長押し）<br>スタート前に取り消す：長押し中に Esc か他のキー（スマホは指を枠の外へずらす）</div></div>
+        <div class="lastbar dim" id="lastBar">
+          <button data-pen="0">OK</button><button data-pen="2000">+2</button><button data-pen="-1">DNF</button><button data-pen="del">削除</button>
+        </div>
+        <div id="diag" class="diag dim"></div>
+        <div class="opts dim">
+          <label><input type="checkbox" id="optInsp"> インスペクション15秒</label>
+          <label>長押し <select id="optHold"><option value="0">なし</option><option value="300">0.3秒</option><option value="550">0.55秒</option></select></label>
+          <label><input type="checkbox" id="optHide"> 計測中はタイムを隠す</label>
+        </div>
+      </div>
+      <aside class="card dim">
+        <div class="row"><select id="sessSel" style="flex:1"></select><button id="sessNew">新規</button><button id="sessEditBtn">編集</button></div>
+        <div id="sessEdit" class="row" hidden style="margin-top:8px">
+          <input type="text" id="sessName" style="flex:1" maxlength="40"><button id="sessSave">名前を保存</button><button id="sessDel" class="ghost">削除</button>
+        </div>
+        <div class="note small" id="bkNote" hidden></div>
+        <div class="qs" id="qs"></div>
+        <div class="nx" id="nxBox">
+          <div class="row" style="justify-content:space-between"><b class="small">次の1回で ao5 は</b><label class="small">目標 ao5 <input type="number" id="tgIn" min="0" step="0.01" placeholder="なし" style="width:5.5em"> 秒</label></div>
+          <div id="nx"></div>
+        </div>
+        <div class="list" id="solveList"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="tab" id="tab-stats" hidden>
+    <div class="card"><div class="row" style="justify-content:space-between"><h2 id="stTitle" style="margin:0"></h2><span class="muted small" id="stSess"></span></div></div>
+    <div id="stBody" class="tab"></div>
+  </section>
+
+  <!-- LOCAL BATTLE -->
+  <section class="tab" id="tab-local" hidden>
+    <div class="card">
+      <div class="row">
+        <label for="lbEv">種目</label><select id="lbEv"></select>
+        <label for="p1n">プレイヤー1</label><input type="text" id="p1n" maxlength="20" style="width:9em">
+        <label for="p2n">プレイヤー2</label><input type="text" id="p2n" maxlength="20" style="width:9em">
+        <button id="lbReset">新しい対戦にする</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h3 id="lbRound" style="margin:0">ラウンド 1</h3><div class="score" id="lbScore">0 - 0</div></div>
+      <div class="scr" id="lbScr" style="margin:8px 0"></div>
+      <div class="diag" id="lbDiag"></div>
+    </div>
+    <div class="duo">
+      <div class="pl" id="pl1"><div class="pname" id="pl1n"></div><div class="pt" id="lt1">0.00</div><div class="muted small">キー：左Shift か A ／ この枠を長押し（Esc か枠の外へずらすと取り消し）</div><div class="row"><button data-lp="0" data-pen="0">OK</button><button data-lp="0" data-pen="2000">+2</button><button data-lp="0" data-pen="-1">DNF</button></div></div>
+      <div class="pl" id="pl2"><div class="pname" id="pl2n"></div><div class="pt" id="lt2">0.00</div><div class="muted small">キー：右Shift か L ／ この枠を長押し（Esc か枠の外へずらすと取り消し）</div><div class="row"><button data-lp="1" data-pen="0">OK</button><button data-lp="1" data-pen="2000">+2</button><button data-lp="1" data-pen="-1">DNF</button></div></div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h3 style="margin:0">ラウンド結果</h3><button id="lbNext" class="pri" disabled>次のラウンド（Enter）</button></div>
+      <div class="tbl" id="lbHist" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <!-- ONLINE -->
+  <section class="tab" id="tab-online" hidden>
+    <div class="card" id="onLobby">
+      <h2>オンライン対戦</h2>
+      <div class="row" style="margin-bottom:10px"><label for="onNick">ニックネーム</label><input type="text" id="onNick" maxlength="20" style="width:10em"></div>
+      <div class="sgrid">
+        <div><h3>ルームを作る</h3><div class="row"><label for="onEv">種目</label><select id="onEv"></select><button id="onCreate" class="pri">作成</button></div></div>
+        <div><h3>コードで参加</h3><div class="row"><input type="text" id="onCode" placeholder="例 cl-k7p2q9" style="width:11em" maxlength="48"><button id="onJoin">参加</button></div></div>
+      </div>
+      <p class="note" style="margin-top:12px">相手にもこのページのリンクを開いてもらい、同じルームコードで参加します。どちらも同じ手順で解き、ラウンドごとに速いほうが勝ち。自分のペースで次へ進めます。</p>
+      <p class="muted small" id="onErr"></p>
+    </div>
+    <div id="onRoom" class="tab" hidden>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div class="row"><span class="muted">ルーム</span><span class="roomcode" id="onCodeShow"></span><button id="onCopy">コピー</button><span class="muted" id="onEvName"></span></div>
+          <button id="onLeave" class="ghost">退出</button>
+        </div>
+        <div id="onPeers" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h3 id="onRound">ラウンド 1</h3>
+        <div class="scr" id="onScr"></div>
+        <div class="diag" id="onDiag"></div>
+        <div id="onArea" class="tarea"><div id="onDisp" class="tdisp">0.00</div><div class="hint">スペース長押し → 離してスタート（スマホは長押し）／長押し中に Esc か指を枠の外へずらすと取り消し</div></div>
+        <div class="lastbar"><button data-op="0">OK</button><button data-op="2000">+2</button><button data-op="-1">DNF</button></div>
+      </div>
+      <div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">結果</h3><div class="score" id="onScore"></div></div><div class="tbl" id="onTable" style="margin-top:8px"></div></div>
+    </div>
+  </section>
+
+  <!-- WCA -->
+  <section class="tab" id="tab-wca" hidden>
+    <div class="card">
+      <h2>WCA の公式記録と比べる</h2>
+      <div class="row">
+        <label for="wcaId">WCA ID</label><input type="text" id="wcaId" placeholder="例 2015TANA01" maxlength="10" style="width:9em;text-transform:uppercase">
+        <label for="wcaCountry">比べる国</label><select id="wcaCountry"></select>
+        <button id="wcaFetch" class="pri">WCA から取得</button>
+      </div>
+      <p class="muted small" id="wcaMsg" style="margin:8px 0 0">WCA ID は空欄でも大丈夫です（世界記録・国内記録との比較だけ表示します）。取得した内容はこの端末に保存され、次回からはすぐ表示されます。</p>
+    </div>
+    <div class="card" id="wcaPerson" hidden></div>
+    <div class="card"><h2>種目ごとの比較</h2><div class="tbl" id="wcaTable"></div>
+      <p class="muted small">練習ベストは、このタイマーの全セッションから種目ごとに出しています（平均は ao5 のベスト。6×6・7×7・目隠しは mo3）。差は「練習ベスト − 比べる記録」で、マイナスなら記録より速いということです。</p></div>
+  </section>
+
+  <!-- DATA -->
+  <section class="tab" id="tab-data" hidden>
+    <div class="sgrid">
+      <div class="card">
+        <h2>種目を追加</h2>
+        <div class="row" style="margin-bottom:8px"><label for="ceName">名前</label><input type="text" id="ceName" maxlength="30" placeholder="例 8×8、3×3 足" style="flex:1"></div>
+        <div class="row" style="margin-bottom:8px"><label for="ceBase">手順の種類</label><select id="ceBase"></select></div>
+        <div class="row" id="ceNxn" style="margin-bottom:8px"><label for="ceN">サイズ N×N</label><input type="number" id="ceN" min="2" max="11" value="8"><label for="ceLen">手数</label><input type="number" id="ceLen" min="1" max="200" value="120"></div>
+        <button id="ceAdd" class="pri">追加する</button>
+        <div id="ceList" style="margin-top:14px"></div>
+      </div>
+      <div class="card">
+        <h2>種目を追加すると</h2>
+        <p class="muted" style="margin:0">上の「種目」から選べるようになり、2人対戦・オンライン対戦でも使えます。種目を削除しても、その種目の記録は残ります。</p>
+        <p class="muted" style="margin:10px 0 0">記録の書き出し・読み込み・csTimer からの移行は「記録の移行」タブにあります。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MOVE / BACKUP -->
+  <section class="tab" id="tab-move" hidden>
+    <div class="card">
+      <h2>記録の保存状況</h2>
+      <div class="tiles" id="mvTiles"></div>
+      <p class="muted small" style="margin:10px 0 0">記録はこのブラウザの中だけに保存されます。ブラウザの「閲覧データを削除」、シークレット（プライベート）モード、別のブラウザや別の端末では見えなくなるので、ときどき「バックアップを書き出す」で保管してください。</p>
+    </div>
+    <div class="card dropzone" id="cstCard">
+      <h2>csTimer から記録を移す（3ステップ）</h2>
+      <ol class="steps">
+        <li><b>csTimer を開いて、エクスポートのボタンを押す</b>
+          <div class="muted small">スマホ：画面いちばん下に並ぶアイコンの<b>左から2番目</b>（文字はなく、<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11M7 8l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 14v6h16v-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg> のような絵です）<br>パソコン：画面左側に並ぶボタンの「エクスポート」</div>
+          <a class="small" href="https://cstimer.net/" target="_blank" rel="noopener">csTimer を開く</a></li>
+        <li><b>出てきた画面で「ファイルにエクスポート」を押す</b>
+          <div class="muted small">「cstimer_日付.txt」という名前のファイルが保存されます。iPhone は「ファイル」アプリの「ダウンロード」、Android は「Download」フォルダに入ります。</div></li>
+        <li><b>下のボタンを押して、そのファイルを選ぶ</b>
+          <div><label class="bigbtn" for="imFileCst">ファイルを選んで読み込む</label><input type="file" id="imFileCst" class="vh" accept=".txt,.json,text/plain,application/json"></div>
+          <div class="muted small">パソコンなら、ファイルをこの枠にドラッグしても読み込めます。csTimer とこのタイマーは<b>同じ端末</b>で開いてください。</div></li>
+      </ol>
+      <p class="small" id="imMsgCst" role="status"></p>
+    </div>
+    <div class="sgrid">
+      <div class="card">
+        <h2>① バックアップを書き出す</h2>
+        <p class="muted small" style="margin-top:0">いちばん大事なのは「CubeLab 形式（JSON）」です。種目・セッション・スクランブル・対戦成績まで全部入っていて、あとで丸ごと戻せます。</p>
+        <div class="row"><button id="exJson" class="pri">バックアップを書き出す（JSON）</button><button id="exShare" hidden>LINE・AirDrop などで送る</button></div>
+        <div class="row" style="margin-top:8px"><button id="exCst">csTimer 形式で書き出す</button><button id="exCsv">表計算用（CSV）</button></div>
+        <div id="exOut" hidden style="margin-top:10px"><p class="muted small">この画面ではファイルを保存できないので、下の内容をすべてコピーしてメモ帳などに貼り付け、保存してください。</p><textarea id="exText" readonly></textarea><button id="exCopy">コピー</button></div>
+      </div>
+      <div class="card dropzone">
+        <h2>② ファイルを読み込む</h2>
+        <p class="muted small" style="margin-top:0">CubeLab のバックアップ（.json）か、csTimer で書き出したファイル（.txt / .json）を選んでください。今の記録は消えずに、そこへ追加されます。同じファイルを2回読み込んでも、記録が二重になることはありません。</p>
+        <label class="bigbtn" for="imFile">ファイルを選んで読み込む</label><input type="file" id="imFile" class="vh" accept=".json,.txt,application/json,text/plain">
+        <p class="small" id="imMsg"></p>
+        <div id="snapBox"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>やりたいこと別の手順</h2>
+      <details class="howto"><summary>csTimer から移したあとは</summary><ol>
+        <li>csTimer のセッションごとに、同じ種目のセッションとして入ります。タイマー画面右上のセッション欄で選ぶと、統計も今までの分から見られます。</li>
+        <li>種目は csTimer の設定から自動で判別します。判別できない種目は「csTimer ○○」という名前の種目として追加されます。</li>
+        <li>csTimer で練習を続けた分も、もう一度書き出して読み込めば、増えた分だけが足されます。</li>
+      </ol></details>
+      <details class="howto"><summary>こちらの記録を csTimer へ移す</summary><ol>
+        <li>「① バックアップを書き出す」の「csTimer 形式で書き出す」を押します。</li>
+        <li><b>先に csTimer 側のデータを書き出して保管してください。</b>csTimer で読み込むと、csTimer の今のデータは置き換わります。</li>
+        <li>csTimer の「エクスポート」→「ファイルからインポート」で、さっきのファイルを選びます。</li>
+      </ol></details>
+      <details class="howto"><summary>別のスマホ・パソコンへ移す（機種変更）</summary><ol>
+        <li>今の端末で「バックアップを書き出す（JSON）」を押して、ファイルを保存します。</li>
+        <li>そのファイルを新しい端末へ送ります（メールに添付、LINE の Keep、Google ドライブ、iCloud など）。</li>
+        <li>新しい端末でこのタイマーを開き、「② ファイルを読み込む」で選びます。</li>
+      </ol></details>
+      <details class="howto"><summary>新しいURL（公開サイト版など）へ移す</summary><ol>
+        <li>記録は「開いているURLごと」に別々に保存されます。新しいURLのタイマーには、前のURLの記録は自動では出てきません。</li>
+        <li>前のURLのタイマーで「バックアップを書き出す（JSON）」を押します。</li>
+        <li>新しいURLのタイマーで「② ファイルを読み込む」を押して選べば、全部引き継げます。</li>
+      </ol></details>
+      <details class="howto"><summary>記録が消えた・減ったとき</summary><ol>
+        <li>まず、いつもと同じブラウザ・同じURLで開いているか確かめてください（シークレットモードや別アプリの中のブラウザだと別扱いです）。</li>
+        <li>このタブの「自動バックアップ」に日付が出ていれば、「自動バックアップから戻す」で前の日の状態を足し戻せます。</li>
+        <li>書き出したバックアップファイルがあれば、「② ファイルを読み込む」で戻せます。</li>
+      </ol><p class="muted small">アプリを更新しても記録が消えないように作っていますが、ブラウザ側でデータが消されるのは防ぎきれません。大事な記録はファイルにも残してください。</p></details>
+    </div>
+    <div class="card">
+      <h2>その他</h2>
+      <div class="row"><button id="sample">サンプル記録を入れる</button><button id="wipe" class="ghost">全データを消す</button></div>
+    </div>
+  </section>
+  <div class="adslot dim" hidden></div>
+</main>
+<footer id="siteFooter" class="wrap"></footer>
+
+<dialog id="pickDlg" class="dlg" aria-labelledby="pickTitle">
+  <div class="row" style="justify-content:space-between"><h2 id="pickTitle" style="margin:0">読み込むセッションを選ぶ</h2><button id="pickClose" class="ghost">やめる</button></div>
+  <p class="muted small" id="pickSub" style="margin:6px 0 8px"></p>
+  <div class="row small"><button id="pickAll" class="ghost">全部選ぶ</button><button id="pickNone" class="ghost">全部外す</button><button id="pickFew" class="ghost">10回未満を外す</button></div>
+  <div id="pickList" class="picklist"></div>
+  <div class="row" style="justify-content:flex-end;margin-top:12px"><span class="muted small" id="pickSum"></span><button id="pickGo" class="pri">選んだセッションを読み込む</button></div>
+</dialog>
+<dialog id="avgDlg" class="dlg" aria-labelledby="avgTitle">
+  <div class="row" style="justify-content:space-between"><h2 id="avgTitle" style="margin:0"></h2><button id="avgClose" class="ghost" aria-label="閉じる">閉じる</button></div>
+  <p class="muted small" id="avgSub" style="margin:4px 0 8px"></p>
+  <div id="avgBody"></div>
+  <div class="row" style="margin-top:12px;justify-content:flex-end"><button id="avgCopy">テキストでコピー</button></div>
+</dialog>
+
+<script>
+"use strict";
+/* ================= utilities ================= */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function hashStr(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
+const ri=(rng,n)=>Math.floor(rng()*n);
+const mod=(a,n)=>((a%n)+n)%n;
+function fmt(ms){if(ms===Infinity)return 'DNF';if(ms==null||isNaN(ms))return '–';const cs=Math.floor(ms/10),s=Math.floor(cs/100),c=String(cs%100).padStart(2,'0');if(s>=60){const m=Math.floor(s/60);return m+':'+String(s%60).padStart(2,'0')+'.'+c}return s+'.'+c}
+const eff=s=>s.p===-1?Infinity:s.t+s.p;
+const fmtSolve=s=>!s?'0.00':s.p===-1?'DNF':fmt(s.t+s.p)+(s.p?'+':'');
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
+const dayKey=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+
+/* ================= 3D helpers ================= */
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const nrm=a=>mul(a,1/Math.hypot(a[0],a[1],a[2]));
+function rodr(v,k,th){const c=Math.cos(th),s=Math.sin(th);return add(add(mul(v,c),mul(cross(k,v),s)),mul(k,dot(k,v)*(1-c)))}
+const qkey=q=>q.map(x=>Math.round(x*100)).join(',');
+function slotIndex(slots){const m=new Map();slots.forEach((s,i)=>m.set(qkey(s.q),i));return m}
+function findSlot(slots,idx,q){const k=qkey(q);if(idx.has(k))return idx.get(k);let b=-1,bd=1e9;slots.forEach((s,i)=>{const d=Math.hypot(...sub(s.q,q));if(d<bd){bd=d;b=i}});return b}
+function makePerm(slots,idx,sel,rot){const p=new Int32Array(slots.length);for(let i=0;i<slots.length;i++)p[i]=sel(slots[i])?findSlot(slots,idx,rot(slots[i].q)):i;return p}
+function applyPerm(st,p,times){for(let t=0;t<times;t++){const n=st.slice();for(let i=0;i<p.length;i++)n[p[i]]=st[i];st=n}return st}
+const svgWrap=(w,h,body)=>`<svg viewBox="0 0 ${w.toFixed(1)} ${h.toFixed(1)}" width="${Math.round(w)}" height="${Math.round(h)}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="スクランブル後の展開図">${body}</svg>`;
+const poly=(pts,fill)=>`<polygon points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${fill}" stroke="var(--sticker-line)" stroke-width="1"/>`;
+
+/* ================= puzzles ================= */
+const CUBE_COL=['#ffffff','#e0302f','#25a244','#ffd500','#ff8c1a','#2563d6']; // U R F D L B
+const FACES6='URFDLB';
+const NORM={U:[0,1,0],R:[1,0,0],F:[0,0,1],D:[0,-1,0],L:[-1,0,0],B:[0,0,-1]};
+const FMAP={U:[[1,0,0],[0,0,1]],F:[[1,0,0],[0,-1,0]],R:[[0,0,-1],[0,-1,0]],B:[[-1,0,0],[0,-1,0]],L:[[0,0,1],[0,-1,0]],D:[[1,0,0],[0,0,-1]]};
+const NETPOS={U:[1,0],L:[0,1],F:[1,1],R:[2,1],B:[3,1],D:[1,2]};
+const ROT90={R:([x,y,z])=>[x,z,-y],L:([x,y,z])=>[x,-z,y],U:([x,y,z])=>[-z,y,x],D:([x,y,z])=>[z,y,-x],F:([x,y,z])=>[y,-x,z],B:([x,y,z])=>[-y,x,z]};
+
+function makeNxN(N){
+  const slots=[];
+  [...FACES6].forEach((f,fi)=>{const n=NORM[f],[cv,rv]=FMAP[f];for(let r=0;r<N;r++)for(let c=0;c<N;c++){const a=2*c-(N-1),b=2*r-(N-1);slots.push({q:add(add(mul(n,N),mul(cv,a)),mul(rv,b)),f:fi,r,c})}});
+  const idx=slotIndex(slots),cache={};
+  const perm=(f,d)=>{const k=f+d;if(!cache[k]){const n=NORM[f],th=d>=N?-1e9:N+1-2*d;cache[k]=makePerm(slots,idx,s=>dot(s.q,n)>=th,ROT90[f])}return cache[k]};
+  return{
+    solved:()=>slots.map(s=>s.f),
+    apply(st,scr){for(const tok of scr.split(/\s+/)){const m=tok.match(/^(\d*)([URFDLBxyz])(w?)(2'|2|')?$/);if(!m)continue;let f=m[2],d;if('xyz'.includes(f)){d=N;f={x:'R',y:'U',z:'F'}[f]}else d=m[3]?(m[1]?+m[1]:2):1;d=Math.min(d,N);const t=m[4]==="'"?3:m[4]?2:1;st=applyPerm(st,perm(f,d),t)}return st},
+    svg(st){const cs=Math.max(4,Math.min(22,Math.floor(80/N))),g=5,fw=N*cs;let b='';slots.forEach((s,i)=>{const P=NETPOS[FACES6[s.f]],x=P[0]*(fw+g)+s.c*cs+1,y=P[1]*(fw+g)+s.r*cs+1;b+=`<rect x="${x}" y="${y}" width="${cs}" height="${cs}" fill="${CUBE_COL[st[i]]}" stroke="var(--sticker-line)" stroke-width="${N>7?.5:1}"/>`});return svgWrap(4*fw+3*g+2,3*fw+2*g+2,b)}
+  };
+}
+
+function makeSkewb(){
+  const slots=[];
+  [...FACES6].forEach((f,fi)=>{const n=NORM[f],[cv,rv]=FMAP[f];slots.push({q:mul(n,3),f:fi,k:0});for(const sc of[-1,1])for(const sr of[-1,1])slots.push({q:add(add(mul(n,3),mul(cv,2*sc)),mul(rv,2*sr)),f:fi,k:1,sc,sr})});
+  const idx=slotIndex(slots),cache={},AX={R:[1,-1,-1],U:[-1,1,-1],L:[-1,-1,1],B:[-1,-1,-1]};
+  const perm=m=>{if(!cache[m]){const v=AX[m];cache[m]=makePerm(slots,idx,s=>dot(s.q,v)>0,q=>{const p=[q[0]*v[0],q[1]*v[1],q[2]*v[2]];return[p[1]*v[0],p[2]*v[1],p[0]*v[2]]})}return cache[m]};
+  return{
+    solved:()=>slots.map(s=>s.f),
+    apply(st,scr){for(const tok of scr.split(/\s+/)){const m=tok.match(/^([RULB])('?)$/);if(m)st=applyPerm(st,perm(m[1]),m[2]?2:1)}return st},
+    svg(st){const S=46,g=5;let b='';slots.forEach((s,i)=>{const P=NETPOS[FACES6[s.f]],x=P[0]*(S+g)+1,y=P[1]*(S+g)+1,col=CUBE_COL[st[i]];
+      if(!s.k)b+=poly([[x+S/2,y],[x+S,y+S/2],[x+S/2,y+S],[x,y+S/2]],col);
+      else{const cx=x+(s.sc>0?S:0),cy=y+(s.sr>0?S:0);b+=poly([[cx,cy],[x+S/2,cy],[cx,y+S/2]],col)}});return svgWrap(4*S+3*g+2,3*S+2*g+2,b)}
+  };
+}
+
+function makePyra(){
+  const r=2*Math.SQRT2/3,h=Math.sqrt(3)/2,V={U:[0,1,0]};
+  [['L',-60],['R',60],['B',180]].forEach(([n,a])=>{a*=Math.PI/180;V[n]=[r*Math.sin(a),-1/3,r*Math.cos(a)]});
+  const FC=[{v:['U','L','R'],m:{U:[1,0],L:[.5,h],R:[1.5,h]}},{v:['U','B','L'],m:{U:[1,0],B:[0,0],L:[.5,h]}},{v:['U','R','B'],m:{U:[1,0],R:[1.5,h],B:[2,0]}},{v:['L','R','B'],m:{L:[.5,h],R:[1.5,h],B:[1,2*h]}}];
+  const COL=['#25a244','#e0302f','#2563d6','#ffd500'],slots=[];
+  FC.forEach((F,fi)=>{const tri=[];for(let i=0;i<=2;i++)for(let j=0;j<=2-i;j++){const k=2-i-j;tri.push([[i+1,j,k],[i,j+1,k],[i,j,k+1]])}
+    for(let i=0;i<=1;i++)for(let j=0;j<=1-i;j++){const k=1-i-j;tri.push([[i,j+1,k+1],[i+1,j,k+1],[i+1,j+1,k]])}
+    tri.forEach(ws=>{const p3=ws.map(w=>F.v.reduce((a,vn,t)=>add(a,mul(V[vn],w[t]/3)),[0,0,0]));const q=mul(p3.reduce(add),1/3);
+      const p2=ws.map(w=>F.v.reduce((a,vn,t)=>[a[0]+F.m[vn][0]*w[t]/3,a[1]+F.m[vn][1]*w[t]/3],[0,0]));slots.push({q,f:fi,p2})})});
+  const idx=slotIndex(slots),cache={};
+  const perm=m=>{if(!cache[m]){const X=m.toUpperCase(),thr=m===X?.1:.55;cache[m]=makePerm(slots,idx,s=>dot(s.q,V[X])>thr,q=>rodr(q,V[X],-2*Math.PI/3))}return cache[m]};
+  return{
+    solved:()=>slots.map(s=>s.f),
+    apply(st,scr){for(const tok of scr.split(/\s+/)){const m=tok.match(/^([ULRBulrb])('?)$/);if(m)st=applyPerm(st,perm(m[1]),m[2]?2:1)}return st},
+    svg(st){const S=120,M=3;let b='';slots.forEach((s,i)=>{b+=poly(s.p2.map(p=>[p[0]*S+M,p[1]*S+M]),COL[st[i]])});return svgWrap(2*S+2*M,2*h*S+2*M,b)}
+  };
+}
+
+function makeMega(){
+  const s5=Math.sqrt(5),N=[[0,1,0]];
+  for(let k=0;k<5;k++){const a=k*72*Math.PI/180;N.push([2/s5*Math.sin(a),1/s5,2/s5*Math.cos(a)])}
+  for(let k=0;k<5;k++)N.push(mul(N[1+k],-1));
+  N.push([0,-1,0]);
+  const OPP=i=>i===0?11:i===11?0:i<=5?i+5:i-5;
+  const COL=['#ffffff','#1f9a3e','#e0302f','#7b3fb8','#ffd500','#2563d6','#9fe36a','#ff9ac2','#fff0b8','#b4c0cc','#ff8c1a','#7fd3ff'];
+  const adj=i=>N.map((_,j)=>j).filter(j=>j!==i&&Math.abs(dot(N[i],N[j])-1/s5)<1e-6);
+  const solve3=(a,b,c)=>{const d=dot(a,cross(b,c));return mul(add(add(cross(b,c),cross(c,a)),cross(a,b)),1/d)};
+  const inter=(p1,p2,p3,p4)=>{const d=(p1[0]-p2[0])*(p3[1]-p4[1])-(p1[1]-p2[1])*(p3[0]-p4[0]);const t=((p1[0]-p3[0])*(p3[1]-p4[1])-(p1[1]-p3[1])*(p3[0]-p4[0]))/d;return[p1[0]+t*(p2[0]-p1[0]),p1[1]+t*(p2[1]-p1[1])]};
+  const F=N.map((n,i)=>{const e1=nrm(cross(n,Math.abs(n[1])>.9?[0,0,1]:[0,1,0])),e2=cross(n,e1),A=adj(i),vs=[];
+    for(let a=0;a<A.length;a++)for(let b=a+1;b<A.length;b++)if(Math.abs(dot(N[A[a]],N[A[b]])-1/s5)<1e-6)vs.push(solve3(n,N[A[a]],N[A[b]]));
+    vs.sort((p,q)=>Math.atan2(dot(sub(p,n),e2),dot(sub(p,n),e1))-Math.atan2(dot(sub(q,n),e2),dot(sub(q,n),e1)));
+    return{n,e1,e2,v3:vs,v2:vs.map(p=>[dot(sub(p,n),e1),dot(sub(p,n),e2)])}});
+  const slots=[],K=.42;
+  F.forEach((f,fi)=>{const v=f.v2,w=v.map(p=>[p[0]*K,p[1]*K]),I=i=>mod(i,5);
+    const x=[],y=[];for(let i=0;i<5;i++){x[i]=inter(w[I(i-1)],w[i],v[i],v[I(i+1)]);y[i]=inter(w[i],w[I(i+1)],v[I(i-1)],v[i])}
+    const to3=p=>add(f.n,add(mul(f.e1,p[0]),mul(f.e2,p[1])));
+    const push=(pl,P)=>{const c=pl.reduce((a,p)=>[a[0]+p[0]/pl.length,a[1]+p[1]/pl.length],[0,0]);slots.push({f:fi,pl,P,q:to3(c)})};
+    push(w,f.n);
+    for(let i=0;i<5;i++){push([v[i],x[i],w[i],y[i]],f.v3[i]);push([x[i],y[I(i+1)],w[I(i+1)],w[i]],mul(add(f.v3[i],f.v3[I(i+1)]),.5))}});
+  const idx=slotIndex(slots),cache={},thr=1-1e-6,T=2*Math.PI/5;
+  const DEF={'R++':[2,-2,'x'],'R--':[2,2,'x'],'D++':[11,-2,'x'],'D--':[11,2,'x'],'U':[0,-1,'in'],"U'":[0,1,'in']};
+  const perm=m=>{if(!cache[m]){const[ax,k,mode]=DEF[m];const op=N[OPP(ax)];cache[m]=makePerm(slots,idx,mode==='in'?s=>dot(s.P,N[ax])>thr:s=>dot(s.P,op)<thr,q=>rodr(q,N[ax],k*T))}return cache[m]};
+  // net: two flowers
+  const flower=(hub,sx,sy)=>{const out=[];[hub,...adj(hub)].forEach(fi=>{const f=F[fi];let tf=p=>p;
+      if(fi!==hub){const a=f.v3.find(p=>F[hub].v3.some(q=>Math.hypot(...sub(p,q))<1e-6));const k=nrm(cross(f.n,N[hub])),th=Math.acos(dot(f.n,N[hub]));tf=p=>add(rodr(sub(p,a),k,th),a)}
+      slots.forEach((s,si)=>{if(s.f!==fi)return;out.push({si,pts:s.pl.map(p=>{const t=sub(tf(add(f.n,add(mul(f.e1,p[0]),mul(f.e2,p[1])))),N[hub]);return[dot(t,sx),dot(t,sy)]})})})});return out};
+  const fl=[flower(0,[1,0,0],[0,0,1]),flower(11,[1,0,0],[0,0,-1])];
+  const bb=fl.map(o=>{let a=[1e9,1e9,-1e9,-1e9];o.forEach(s=>s.pts.forEach(p=>{a[0]=Math.min(a[0],p[0]);a[1]=Math.min(a[1],p[1]);a[2]=Math.max(a[2],p[0]);a[3]=Math.max(a[3],p[1])}));return a});
+  const SC=44,G=14;
+  return{
+    solved:()=>slots.map(s=>s.f),
+    apply(st,scr){for(const tok of scr.split(/\s+/)){if(DEF[tok])st=applyPerm(st,perm(tok),1)}return st},
+    svg(st){let b='',ox=2;const H=Math.max(bb[0][3]-bb[0][1],bb[1][3]-bb[1][1])*SC+4;
+      fl.forEach((o,k)=>{const B=bb[k];o.forEach(s=>{b+=poly(s.pts.map(p=>[(p[0]-B[0])*SC+ox,(p[1]-B[1])*SC+2]),COL[st[s.si]])});ox+=(B[2]-B[0])*SC+G});
+      return svgWrap(ox-G+2,H,b)}
+  };
+}
+
+function makeSq1(){
+  const SIDE={b:'#2563d6',r:'#e0302f',f:'#25a244',l:'#ff8c1a'};
+  const LAY=[['E','b'],['C','b','r'],['E','r'],['C','r','f'],['E','f'],['C','f','l'],['E','l'],['C','l','b']];
+  const layer=(base,off)=>{const c=[];let id=off;LAY.forEach(p=>{if(p[0]==='E')c.push({id,base,side:SIDE[p[1]]});else c.push({id,base,side:SIDE[p[1]]},{id,base,side:SIDE[p[2]]});id++});return c};
+  const solved=()=>({t:layer('#ffffff',0),d:layer('#ffd500',8),m:0});
+  const turn=(st,x,y)=>{const t=[],d=[];for(let i=0;i<12;i++){t[mod(i+x,12)]=st.t[i];d[mod(i-y,12)]=st.d[i]}return{t,d,m:st.m}};
+  const can=st=>st.t[11].id!==st.t[0].id&&st.t[5].id!==st.t[6].id&&st.d[11].id!==st.d[0].id&&st.d[5].id!==st.d[6].id;
+  const slash=st=>{const t=st.t.slice(),d=st.d.slice();for(let i=0;i<6;i++){t[5-i]=st.d[i];d[5-i]=st.t[i]}return{t,d,m:st.m^1}};
+  const P=(cx,cy,r,deg)=>{const a=deg*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)]};
+  const sector=(cx,cy,r0,r1,a0,a1,fill)=>{const p=[P(cx,cy,r1,a0),P(cx,cy,r1,a1)];if(r0===0)return`<path d="M${cx},${cy} L${p[0][0].toFixed(1)},${p[0][1].toFixed(1)} A${r1},${r1} 0 0 1 ${p[1][0].toFixed(1)},${p[1][1].toFixed(1)} Z" fill="${fill}" stroke="var(--sticker-line)" stroke-width="1"/>`;
+    const q=[P(cx,cy,r0,a1),P(cx,cy,r0,a0)];return`<path d="M${p[0][0].toFixed(1)},${p[0][1].toFixed(1)} A${r1},${r1} 0 0 1 ${p[1][0].toFixed(1)},${p[1][1].toFixed(1)} L${q[0][0].toFixed(1)},${q[0][1].toFixed(1)} A${r0},${r0} 0 0 0 ${q[1][0].toFixed(1)},${q[1][1].toFixed(1)} Z" fill="${fill}" stroke="var(--sticker-line)" stroke-width="1"/>`};
+  const drawLayer=(cells,cx,cy,mirror)=>{const R=62,R1=44;let b='';const ang=i=>mirror?[-90-30*i-30,-90-30*i]:[-90+30*i,-90+30*i+30];
+    let i=0;while(i<12){let j=i;while(j+1<12&&cells[j+1].id===cells[i].id)j++;
+      if(i===0&&cells[11].id===cells[0].id){i=j+1;continue}
+      const cs=[];for(let k=i;k<=j;k++)cs.push(k);if(j===11&&cells[0].id===cells[11].id){let k=0;while(cells[k].id===cells[11].id){cs.push(k);k++}}
+      const a0=mirror?ang(cs[cs.length-1])[0]:ang(cs[0])[0],a1=mirror?ang(cs[0])[1]:ang(cs[cs.length-1])[1];
+      b+=sector(cx,cy,0,R1,a0,a1,cells[cs[0]].base);cs.forEach(k=>{const[s0,s1]=ang(k);b+=sector(cx,cy,R1,R,s0,s1,cells[k].side)});i=j+1}
+    b+=`<line x1="${cx}" y1="${cy-R-6}" x2="${cx}" y2="${cy+R+6}" stroke="var(--muted)" stroke-dasharray="3 3"/>`;return b};
+  return{
+    solved,turn,can,slash,
+    apply(st,scr){const re=/\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)|\//g;let m;while((m=re.exec(scr))){if(m[0]==='/'){if(can(st))st=slash(st)}else st=turn(st,+m[1],+m[2])}return st},
+    svg(st){const b=drawLayer(st.t,72,74,false)+drawLayer(st.d,222,74,true)+
+      `<text x="72" y="160" text-anchor="middle" font-size="11" fill="var(--muted)">上面</text><text x="222" y="160" text-anchor="middle" font-size="11" fill="var(--muted)">下面（下から見た図）</text><text x="147" y="176" text-anchor="middle" font-size="11" fill="var(--muted)">中層：${st.m?'ずれている':'そろっている'}</text>`;
+      return svgWrap(294,182,b)}
+  };
+}
+
+function makeClock(){
+  const PINS={UL:[0,1,3,4],UR:[1,2,4,5],DL:[3,4,6,7],DR:[4,5,7,8]};
+  const MV={UR:['UR'],DR:['DR'],DL:['DL'],UL:['UL'],U:['UL','UR'],R:['UR','DR'],D:['DL','DR'],L:['UL','DL'],ALL:['UL','UR','DL','DR']};
+  const CORN={0:2,2:0,6:8,8:6};
+  const face=(vals,ox,bg,label)=>{let b=`<rect x="${ox}" y="2" width="132" height="132" rx="20" fill="${bg}" stroke="var(--sticker-line)"/>`;
+    vals.forEach((v,i)=>{const cx=ox+26+(i%3)*40,cy=28+Math.floor(i/3)*40,a=(v*30-90)*Math.PI/180;
+      b+=`<circle cx="${cx}" cy="${cy}" r="15" fill="#ffffff" stroke="var(--sticker-line)"/><line x1="${cx}" y1="${cy}" x2="${(cx+12*Math.cos(a)).toFixed(1)}" y2="${(cy+12*Math.sin(a)).toFixed(1)}" stroke="#c43a3a" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy-15}" r="1.6" fill="#17202a"/>`});
+    return b+`<text x="${ox+66}" y="150" text-anchor="middle" font-size="11" fill="var(--muted)">${label}</text>`};
+  return{
+    solved:()=>({f:Array(9).fill(0),b:Array(9).fill(0)}),
+    apply(st,scr){let f=st.f.slice(),b=st.b.slice();for(const tok of scr.split(/\s+/)){if(tok==='y2'){[f,b]=[b,f];continue}
+      const m=tok.match(/^(UR|DR|DL|UL|U|R|D|L|ALL)(\d)([+-])$/);if(!m)continue;const amt=+m[2]*(m[3]==='+'?1:-1);
+      const set=new Set(MV[m[1]].flatMap(p=>PINS[p]));set.forEach(i=>{f[i]=mod(f[i]+amt,12);if(i in CORN)b[CORN[i]]=mod(b[CORN[i]]-amt,12)})}
+      return{f,b}},
+    svg(st){return svgWrap(290,156,face(st.f,2,'#a9cdf5','表')+face(st.b,156,'#3d5f8f','裏'))}
+  };
+}
+
+// CTO (corner-turning octahedron): each face is a 3-grid of 9 triangles; vertex turns are 90°.
+// Big move U/R/F/D/L/B turns everything within two rows of that vertex, lowercase turns only the tip.
+function makeCTO(){
+  const COL=['#ffffff','#e0302f','#25a244','#7b3fb8','#ffd500','#ff8c1a','#2563d6','#9aa5b1'],FS=[],slots=[];
+  for(const sy of[1,-1])for(const[sx,sz]of[[1,1],[-1,1],[-1,-1],[1,-1]])FS.push([sx,sy,sz]);
+  const tri=[];for(let i=0;i<3;i++)for(let j=0;j<3-i;j++){const k=2-i-j;tri.push([[i+1,j,k],[i,j+1,k],[i,j,k+1]])}
+  for(let i=0;i<2;i++)for(let j=0;j<2-i;j++){const k=1-i-j;tri.push([[i,j+1,k+1],[i+1,j,k+1],[i+1,j+1,k]])}
+  FS.forEach((s,fi)=>tri.forEach(ws=>{const p=ws.map(w=>[s[0]*w[0]/3,s[1]*w[1]/3,s[2]*w[2]/3]);slots.push({q:mul(p.reduce(add),1/3),f:fi,p})}));
+  const idx=slotIndex(slots),cache={};
+  const perm=m=>{if(!cache[m]){const X=m.toUpperCase(),thr=m===X?.4:.7;cache[m]=makePerm(slots,idx,s=>dot(s.q,NORM[X])>thr,ROT90[X])}return cache[m]};
+  const R=64,G=26;
+  return{
+    solved:()=>slots.map(s=>s.f),
+    apply(st,scr){for(const tok of scr.split(/\s+/)){const m=tok.match(/^([URFDLBurfdlb])(2|')?$/);if(m)st=applyPerm(st,perm(m[1]),m[2]==="'"?3:m[2]?2:1)}return st},
+    svg(st){let b='';slots.forEach((s,i)=>{const up=s.p[0][1]+s.p[1][1]+s.p[2][1]>0,ox=up?2+R:2+3*R+G;
+        b+=poly(s.p.map(v=>[ox+(up?v[0]:-v[0])*R,2+R+v[2]*R]),COL[st[i]])});
+      b+=`<text x="${2+R}" y="${2*R+20}" text-anchor="middle" font-size="11" fill="var(--muted)">上半分（上から見た図）</text><text x="${2+3*R+G}" y="${2*R+20}" text-anchor="middle" font-size="11" fill="var(--muted)">下半分（下から見た図）</text>`;
+      return svgWrap(4*R+G+4,2*R+26,b)}
+  };
+}
+
+const PUZ={};
+function getPuzzle(key){if(!PUZ[key]){const[t,n]=key.split(':');PUZ[key]=t==='nxn'?makeNxN(+n):t==='skewb'?makeSkewb():t==='pyra'?makePyra():t==='mega'?makeMega():t==='sq1'?makeSq1():t==='cto'?makeCTO():makeClock()}return PUZ[key]}
+
+/* ================= scramblers ================= */
+const SUF=['',"'",'2'];
+function nxnScramble(N,len,rng){
+  const faces=N===2?['R','U','F']:['U','D','R','L','F','B'],AX={U:0,D:0,R:1,L:1,F:2,B:2},maxD=N<=3?1:Math.floor(N/2);
+  let lastAx=-1,used=new Set();const out=[];let guard=0;
+  while(out.length<len&&guard++<len*50){const f=faces[ri(rng,faces.length)],d=1+ri(rng,maxD);
+    if(N%2===0&&d===N/2&&!'RUF'.includes(f))continue;const k=f+d;
+    if(AX[f]===lastAx){if(used.has(k))continue}else{used=new Set();lastAx=AX[f]}
+    used.add(k);out.push((d>2?d:'')+f+(d>=2?'w':'')+SUF[ri(rng,3)])}
+  return out.join(' ')}
+function pyraScramble(rng){const m=[];let last='';while(m.length<10){const f='ULRB'[ri(rng,4)];if(f===last)continue;last=f;m.push(f+(rng()<.5?'':"'"))}
+  for(const t of'ulrb'){const k=ri(rng,3);if(k)m.push(t+(k===2?"'":''))}return m.join(' ')}
+function skewbScramble(rng){const m=[];let last='';while(m.length<9){const f='RULB'[ri(rng,4)];if(f===last)continue;last=f;m.push(f+(rng()<.5?'':"'"))}return m.join(' ')}
+function megaScramble(rng){const L=[];for(let l=0;l<7;l++){const mv=[];let s='';for(let i=0;i<10;i++){s=rng()<.5?'++':'--';mv.push((i%2?'D':'R')+s)}mv.push(s==='++'?'U':"U'");L.push(mv.join(' '))}return L.join('\n')}
+function sq1Scramble(rng){const P=getPuzzle('sq1');let st=P.solved();const out=[];
+  for(let k=0;k<12;k++){const c=[];for(let x=-5;x<=6;x++)for(let y=-5;y<=6;y++){if(k>0&&x===0&&y===0)continue;const s2=P.turn(st,x,y);if(P.can(s2))c.push([x,y,s2])}
+    const[x,y,s2]=c[ri(rng,c.length)];st=P.slash(s2);out.push(`(${x},${y})`)}return out.join(' / ')+' /'}
+function clockScramble(rng){const a=()=>{const v=ri(rng,12)-5;return Math.abs(v)+(v<0?'-':'+')};
+  return['UR','DR','DL','UL','U','R','D','L','ALL'].map(m=>m+a()).join(' ')+' y2 '+['U','R','D','L','ALL'].map(m=>m+a()).join(' ')}
+function ctoScramble(rng){const m=[nxnScramble(3,25,rng)];for(const t of'urfdlb'){const k=ri(rng,4);if(k)m.push(t+['','','2',"'"][k])}return m.join(' ')}
+function bldScramble(rng){let s=nxnScramble(3,22,rng);const a=['','Rw',"Rw'",'Rw2'][ri(rng,4)],b=['','Uw',"Uw'",'Uw2'][ri(rng,4)];return[s,a,b].filter(Boolean).join(' ')}
+
+/* ================= events (add new built-in events here: one line each) ================= */
+const BUILTIN=[
+  {id:'222',name:'2×2',puz:'nxn:2',scr:r=>nxnScramble(2,11,r)},
+  {id:'333',name:'3×3',puz:'nxn:3',scr:r=>nxnScramble(3,22,r)},
+  {id:'444',name:'4×4',puz:'nxn:4',scr:r=>nxnScramble(4,40,r)},
+  {id:'555',name:'5×5',puz:'nxn:5',scr:r=>nxnScramble(5,60,r)},
+  {id:'666',name:'6×6',puz:'nxn:6',scr:r=>nxnScramble(6,80,r)},
+  {id:'777',name:'7×7',puz:'nxn:7',scr:r=>nxnScramble(7,100,r)},
+  {id:'333oh',name:'3×3 片手',puz:'nxn:3',scr:r=>nxnScramble(3,22,r)},
+  {id:'333bf',name:'3×3 目隠し',puz:'nxn:3',scr:bldScramble},
+  {id:'pyra',name:'ピラミンクス',puz:'pyra',scr:pyraScramble},
+  {id:'skewb',name:'スキューブ',puz:'skewb',scr:skewbScramble},
+  {id:'mega',name:'メガミンクス',puz:'mega',scr:megaScramble},
+  {id:'sq1',name:'スクエア1',puz:'sq1',scr:sq1Scramble},
+  {id:'clock',name:'クロック',puz:'clock',scr:clockScramble},
+  {id:'cto',name:'CTO（コーナーターン八面体）',puz:'cto',scr:ctoScramble},
+];
+const BMAP=Object.fromEntries(BUILTIN.map(e=>[e.id,e]));
+function cleanDef(d){if(!d||typeof d!=='object')return null;if(typeof d.id==='string'&&BMAP[d.id]&&!d.base)return{id:d.id};
+  const base=String(d.base||'');if(base!=='nxn'&&base!=='none'&&!BMAP[base])return null;
+  return{id:String(d.id||'').slice(0,24),name:String(d.name||'カスタム').replace(/[\u0000-\u001f]/g,'').slice(0,30),base,n:Math.max(2,Math.min(11,+d.n||3)),len:Math.max(1,Math.min(200,+d.len||20))}}
+function resolveEvent(d){d=cleanDef(d);if(!d)return BMAP['333'];if(!d.base)return BMAP[d.id];
+  if(d.base==='nxn')return{id:d.id,name:d.name,custom:d,puz:'nxn:'+d.n,scr:r=>nxnScramble(d.n,d.len,r)};
+  if(d.base==='none')return{id:d.id,name:d.name,custom:d,puz:null,scr:()=>''};
+  const b=BMAP[d.base];return{id:d.id,name:d.name,custom:d,puz:b.puz,scr:b.scr}}
+const eventById=id=>BMAP[id]||resolveEvent(DB.custom.find(c=>c.id===id))||BMAP['333'];
+const defOf=id=>BMAP[id]?{id}:cleanDef(DB.custom.find(c=>c.id===id));
+function diagram(ev,scr){if(!ev.puz)return'';try{const P=getPuzzle(ev.puz);return P.svg(P.apply(P.solved(),scr))}catch(e){return''}}
+const newScr=ev=>ev.scr(Math.random);
+
+/* ================= storage ================= */
+const KEY='cubelab.v1';
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const SNAP='cubelab.snapshot',RESCUE='cubelab.rescue-';
+const META0=()=>({lastExport:0,exportedCount:0,snapDay:''});
+function freshDB(){return{v:1,ev:'333',sessions:[],cur:{},custom:[],battles:[],meta:META0(),settings:{inspect:false,hold:300,hide:false,nick:'',p1:'プレイヤー1',p2:'プレイヤー2',targets:{}}}}
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+let DB;const RAW=lsGet(KEY);try{DB=JSON.parse(RAW||'null')}catch(e){DB=null}
+// unreadable data is set aside, never overwritten; a newer/older version number alone never resets records
+if(RAW&&(!DB||typeof DB!=='object'||!Array.isArray(DB.sessions))){try{localStorage.setItem(RESCUE+Date.now(),RAW)}catch(e){}DB=null}
+if(!DB)DB=freshDB();
+DB.v=DB.v||1;DB.meta=Object.assign(META0(),DB.meta||{});
+DB.settings=Object.assign(freshDB().settings,DB.settings||{});
+if(!DB.wca||typeof DB.wca!=='object')DB.wca={id:'',country:'Japan',person:null,rec:null,at:0};
+['sessions','custom','battles'].forEach(k=>{if(!Array.isArray(DB[k]))DB[k]=[]});DB.cur=DB.cur||{};
+let saveWarned=false;
+function save(){try{const d=dayKey(Date.now());
+    // once a day, keep the previous stored state as an automatic snapshot before overwriting it
+    if(DB.meta.snapDay!==d){const prev=lsGet(KEY);if(prev&&prev.includes('"solves":[{'))localStorage.setItem(SNAP,JSON.stringify({at:Date.now(),db:prev}));DB.meta.snapDay=d}
+    localStorage.setItem(KEY,JSON.stringify(DB))}
+  catch(e){if(!saveWarned){saveWarned=true;toast('記録を保存できませんでした。「記録の移行」タブから書き出してください')}}}
+const totalSolves=()=>DB.sessions.reduce((a,s)=>a+s.solves.length,0);
+function askPersist(){try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||totalSolves()===0?p:navigator.storage.persist()).then(p=>{STORE.persisted=!!p}).catch(()=>{})}catch(e){}}
+const STORE={persisted:false};
+function sessionsOf(ev){return DB.sessions.filter(s=>s.ev===ev)}
+function curSession(){const ev=DB.ev;let s=DB.sessions.find(x=>x.id===DB.cur[ev]&&x.ev===ev)||sessionsOf(ev)[0];
+  if(!s){s={id:uid(),ev,name:'セッション1',solves:[]};DB.sessions.push(s);save()}DB.cur[ev]=s.id;return s}
+
+/* ================= stats ================= */
+function rolling(ts,N){const n=ts.length,out=new Array(n).fill(null);if(n<N)return out;if(N===1)return ts.slice();
+  if(N<=3){for(let i=N-1;i<n;i++){let s=0,d=false;for(let j=i-N+1;j<=i;j++){if(ts[j]===Infinity)d=true;s+=ts[j]}out[i]=d?Infinity:s/N}return out}
+  const k=Math.ceil(N*.05),w=[];const lb=v=>{let lo=0,hi=w.length;while(lo<hi){const m=(lo+hi)>>1;if(w[m]<v)lo=m+1;else hi=m}return lo};
+  for(let i=0;i<n;i++){w.splice(lb(ts[i]),0,ts[i]);if(i>=N)w.splice(lb(ts[i-N]),1);
+    if(i>=N-1){if(w[N-1-k]===Infinity)out[i]=Infinity;else{let s=0;for(let j=k;j<N-k;j++)s+=w[j];out[i]=s/(N-2*k)}}}return out}
+const bestOf=a=>{let b=null;a.forEach(v=>{if(v!=null&&(b==null||v<b))b=v});return b};
+function basic(ts){const ok=ts.filter(t=>t!==Infinity),n=ok.length;if(!n)return{mean:null,sd:null,med:null};const mean=ok.reduce((a,b)=>a+b,0)/n;
+  const sd=Math.sqrt(ok.reduce((a,b)=>a+(b-mean)**2,0)/n),s=ok.slice().sort((a,b)=>a-b),med=n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2;return{mean,sd,med}}
+// which positions in a window the average drops (same trim rule as rolling)
+function trimmedIdx(win,N){if(N<=3)return new Set();const k=Math.ceil(N*.05),o=win.map((t,i)=>[t,i]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  return new Set([...o.slice(0,k),...o.slice(N-k)].map(x=>x[1]))}
+const avLabel=N=>(N<=3?'mo':'ao')+N;
+const avBtn=(N,a,i)=>N>1&&i>=0&&a[i]!=null?`<button class="avl" data-avg="${N}:${i}" title="${avLabel(N)} の内訳を見る">${fmt(a[i])}</button>`:fmt(i>=0?a[i]:null);
+let avgText='';
+function openAvg(N,end){const s=curSession(),ev=eventById(s.ev);if(end<N-1||end>=s.solves.length)return;const st=end-N+1,sv=s.solves.slice(st,end+1),ts=sv.map(eff),cut=trimmedIdx(ts,N),v=rolling(ts,N)[N-1];
+  $('#avgTitle').textContent=`${avLabel(N)}：${fmt(v)}`;
+  $('#avgSub').textContent=`${ev.name}・${s.name}・${st+1}〜${end+1}回目`+(N>3?`（カッコは計算から外した最速・最遅 ${cut.size/2}回ずつ）`:'');
+  $('#avgBody').innerHTML=sv.map((x,i)=>{const c=cut.has(i),t=fmtSolve(x);return`<div class="avrow${c?' cut':''}"><span class="muted num">${st+i+1}</span><span class="num tm">${c?'('+t+')':t}</span><span class="sc">${esc(x.s||'')}<br><span class="small">${esc(new Date(x.d).toLocaleString('ja-JP'))}</span></span></div>`}).join('');
+  avgText=`${ev.name} ${avLabel(N)}: ${fmt(v)}\n`+sv.map((x,i)=>{const t=fmtSolve(x);return`${i+1}. ${cut.has(i)?'('+t+')':t}   ${(x.s||'').replace(/\n/g,' ')}`}).join('\n');
+  $('#avgDlg').showModal()}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-avg]');if(!b)return;e.stopPropagation();const[N,i]=b.dataset.avg.split(':').map(Number);openAvg(N,i)},true);
+$('#avgClose').addEventListener('click',()=>$('#avgDlg').close());
+$('#avgDlg').addEventListener('click',e=>{if(e.target===e.currentTarget)$('#avgDlg').close()});
+$('#avgCopy').addEventListener('click',()=>navigator.clipboard.writeText(avgText).then(()=>toast('コピーしました')).catch(()=>toast('コピーできませんでした')));
+function checkCond(ts,W,K,X){const ok=ts.map(t=>t<X);let cnt=0,hits=[],cur=0,longest=0,lsEnd=-1;
+  for(let i=0;i<ts.length;i++){cnt+=ok[i];if(i>=W)cnt-=ok[i-W];if(i>=W-1&&cnt>=K)hits.push(i);cur=ok[i]?cur+1:0;if(cur>longest){longest=cur;lsEnd=i}}
+  return{hits,longest,lsEnd,current:cur,rate:ts.length?ok.filter(Boolean).length/ts.length:0}}
+
+/* ================= timer engine ================= */
+class STimer{
+  constructor(o){this.o=o;this.st='idle';this.pen=0;this.inspStart=0;this.t0=0;this.justStopped=false;this.raf=0;this.ht=0;this.last=null;this.render()}
+  get opts(){return this.o.opts()}
+  down(){if(this.st==='run'){this.stop();this.justStopped=true;return}
+    if(this.st==='hold'||this.st==='ready'||this.st==='arm')return;
+    if(this.o.locked&&this.o.locked())return;
+    if((this.st==='idle'||this.st==='done')&&this.opts.inspect){this.st='arm';this.render();return}
+    this.beginHold()}
+  up(){if(this.justStopped){this.justStopped=false;return}
+    if(this.st==='arm'){this.inspStart=performance.now();this.st='insp';this.loop();return}
+    if(this.st==='hold'){clearTimeout(this.ht);this.st=this.inspStart?'insp':'idle';this.render();if(this.inspStart)this.loop();return}
+    if(this.st==='ready')this.start()}
+  beginHold(){this.st='hold';const h=this.opts.hold;if(h<=0)this.st='ready';else this.ht=setTimeout(()=>{if(this.st==='hold'){this.st='ready';this.render()}},h);this.render();if(this.inspStart)this.loop()}
+  start(){const now=performance.now();this.pen=0;if(this.inspStart){const e=now-this.inspStart;this.pen=e>17000?-1:e>15000?2000:0}this.inspStart=0;this.st='run';this.t0=now;this.o.onStart&&this.o.onStart();this.loop()}
+  stop(){const t=Math.round(performance.now()-this.t0);this.st='done';cancelAnimationFrame(this.raf);this.last={t,p:this.pen};this.o.onStop({t,p:this.pen});this.render()}
+  get holding(){return this.st==='hold'||this.st==='ready'||this.st==='arm'}
+  // back out of a hold before the start; inspection (if running) keeps counting
+  abortHold(){if(!this.holding)return false;clearTimeout(this.ht);this.st=this.inspStart?'insp':'idle';this.render();if(this.inspStart)this.loop();toast('スタートを取り消しました');return true}
+  cancel(){clearTimeout(this.ht);cancelAnimationFrame(this.raf);const was=this.st;this.st='idle';this.inspStart=0;this.justStopped=false;this.render();if(was==='run'&&this.o.onCancel)this.o.onCancel()}
+  reset(){this.cancel();this.last=null;this.render()}
+  loop(){cancelAnimationFrame(this.raf);const f=()=>{this.render();if(this.st==='run'||this.st==='insp'||((this.st==='hold'||this.st==='ready')&&this.inspStart))this.raf=requestAnimationFrame(f)};f()}
+  render(){const el=this.o.el;el.dataset.st=this.st;let t;
+    if(this.st==='run')t=this.opts.hide?'計測中':fmt(performance.now()-this.t0);
+    else if(this.inspStart&&(this.st==='insp'||this.st==='hold'||this.st==='ready')){const e=(performance.now()-this.inspStart)/1000;t=e>17?'DNF':e>15?'+2':String(Math.ceil(15-e))}
+    else if(this.st==='arm')t='15';
+    else if(this.st==='hold'||this.st==='ready')t='0.00';
+    else t=this.o.idleText?this.o.idleText():fmtSolve(this.last);
+    el.textContent=t}
+}
+function bindTouch(area,timer){area.addEventListener('pointerdown',e=>{if(e.target.closest('button,select,input'))return;e.preventDefault();timer.down()});
+  area.addEventListener('pointerup',e=>{if(e.target.closest('button,select,input'))return;e.preventDefault();timer.up()});
+  area.addEventListener('pointermove',e=>{if(!timer.holding||!e.buttons&&e.pointerType==='mouse')return;const r=area.getBoundingClientRect();
+    if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)timer.abortHold()});
+  area.addEventListener('pointercancel',()=>timer.abortHold());
+  area.addEventListener('contextmenu',e=>e.preventDefault())}
+const timerOpts=()=>({inspect:DB.settings.inspect,hold:+DB.settings.hold,hide:DB.settings.hide});
+
+/* ================= tabs & event selects ================= */
+let TAB='timer';
+function setTab(t){TAB=t;$$('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));$$('.tab[id^=tab-]').forEach(s=>s.hidden=s.id!=='tab-'+t);
+  if(t==='stats')renderStats();if(t==='local')renderLocal();if(t==='online')renderOnline();if(t==='wca')renderWCA();if(t==='move')renderMove();if(t==='data')renderData()}
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.tab)});
+function eventOptions(sel){const cu=DB.custom.map(c=>`<option value="${esc(c.id)}"${c.id===sel?' selected':''}>${esc(c.name)}</option>`).join('');
+  return BUILTIN.map(e=>`<option value="${e.id}"${e.id===sel?' selected':''}>${esc(e.name)}</option>`).join('')+(cu?`<optgroup label="追加した種目">${cu}</optgroup>`:'')}
+function fillEventSelects(){if(!BMAP[DB.ev]&&!DB.custom.some(c=>c.id===DB.ev))DB.ev='333';$('#evSel').innerHTML=eventOptions(DB.ev);
+  $('#onEv').innerHTML=eventOptions(DB.ev);$('#lbEv').innerHTML=eventOptions(LB.ev)}
+$('#evSel').addEventListener('change',e=>{DB.ev=e.target.value;save();curScr=newScr(eventById(DB.ev));mainT.reset();renderMain();if(TAB==='stats')renderStats()});
+$('#evAdd').addEventListener('click',()=>{setTab('data');$('#ceName').focus()});
+
+/* ================= main timer ================= */
+let curScr='',openRow=-1;
+const mainT=new STimer({el:$('#tdisp'),opts:timerOpts,
+  onStart:()=>document.body.classList.add('running'),
+  onCancel:()=>document.body.classList.remove('running'),
+  onStop:({t,p})=>{document.body.classList.remove('running');const s=curSession();s.solves.push({t,p,s:curScr,d:Date.now()});save();curScr=newScr(eventById(DB.ev));openRow=-1;renderMain()},
+  idleText:()=>{const s=curSession().solves;return s.length?fmtSolve(s[s.length-1]):'0.00'}});
+bindTouch($('#tarea'),mainT);
+$('#scrNext').addEventListener('click',()=>{curScr=newScr(eventById(DB.ev));renderScr()});
+// shows a scramble; megaminx keeps each line whole and shrinks the font until the longest line fits
+function setScrText(el,text,ev){const mega=!!(ev&&ev.puz==='mega'&&text.includes('\n'));el.textContent=text;el.classList.toggle('mega',mega);el.style.fontSize='';if(mega)fitMega(el)}
+function fitMega(el){const longest=Math.max(...el.textContent.split('\n').map(l=>l.length)),w=el.clientWidth;if(!w||!longest)return;
+  el.style.fontSize=Math.min(19,Math.max(9,Math.floor(w/(longest*.61))))+'px'}
+addEventListener('resize',()=>$$('.scr.mega').forEach(fitMega));
+function renderScr(){const ev=eventById(DB.ev);setScrText($('#scr'),curScr||'（この種目は手順なし）',ev);$('#diag').innerHTML=diagram(ev,curScr)}
+function setPen(sess,i,v){if(v==='del'){sess.solves.splice(i,1)}else sess.solves[i].p=+v;save();openRow=-1;renderMain();mainT.render()}
+$('#lastBar').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const s=curSession();if(!s.solves.length)return;setPen(s,s.solves.length-1,b.dataset.pen)});
+['optInsp','optHide'].forEach(id=>$('#'+id).addEventListener('change',e=>{DB.settings[id==='optInsp'?'inspect':'hide']=e.target.checked;save()}));
+$('#optHold').addEventListener('change',e=>{DB.settings.hold=+e.target.value;save()});
+
+function renderSessions(){const s=curSession();$('#sessSel').innerHTML=sessionsOf(DB.ev).map(x=>`<option value="${x.id}"${x.id===s.id?' selected':''}>${esc(x.name)}（${x.solves.length}）</option>`).join('');$('#sessName').value=s.name}
+$('#sessSel').addEventListener('change',e=>{DB.cur[DB.ev]=e.target.value;save();renderMain()});
+$('#sessNew').addEventListener('click',()=>{const n=sessionsOf(DB.ev).length+1;const s={id:uid(),ev:DB.ev,name:'セッション'+n,solves:[]};DB.sessions.push(s);DB.cur[DB.ev]=s.id;save();renderMain();toast('新しいセッションを作りました')});
+$('#sessEditBtn').addEventListener('click',()=>{$('#sessEdit').hidden=!$('#sessEdit').hidden;$('#sessDel').textContent='削除';delArm=false});
+$('#sessSave').addEventListener('click',()=>{const v=$('#sessName').value.trim();if(v){curSession().name=v;save();renderSessions();toast('名前を保存しました')}});
+let delArm=false;
+$('#sessDel').addEventListener('click',()=>{if(!delArm){delArm=true;$('#sessDel').textContent='もう一度押すと削除';return}
+  const s=curSession();DB.sessions=DB.sessions.filter(x=>x.id!==s.id);delete DB.cur[DB.ev];save();delArm=false;$('#sessEdit').hidden=true;$('#sessDel').textContent='削除';renderMain();toast('セッションを削除しました')});
+
+/* BPA / WPA: what the next solve can make of the ao5 formed with the last 4 solves */
+function nextAo5(ts){if(ts.length<4)return null;const w=ts.slice(-4).sort((a,b)=>a-b);return{bpa:(w[0]+w[1]+w[2])/3,wpa:(w[1]+w[2]+w[3])/3,mid:w[1]+w[2]}}
+const targetOf=ev=>{const v=+(DB.settings.targets||{})[ev];return v>0?v*1000:null};
+function renderNext(ts,curAo5){const r=nextAo5(ts),T=targetOf(DB.ev),el=$('#nx'),inp=$('#tgIn');
+  if(document.activeElement!==inp)inp.value=T?String(T/1000):'';
+  if(!r){el.innerHTML=`<p class="muted small" style="margin:6px 0 0">あと${4-ts.length}回解くと、次の1回で ao5 がどこまで良く（BPA）・悪く（WPA）なるかが出ます。</p>`;return}
+  let tg='';
+  if(T){if(T>=r.wpa)tg=`<span class="best">DNFでも達成</span>`;
+    else if(T<r.bpa)tg=`<span class="muted">次が最速でも届きません</span>`;
+    else tg=`次を <b class="best">${fmt(Math.floor((3*T-r.mid)/10)*10)}</b> 以下で達成`}
+  el.innerHTML=`<div class="nxg"><span class="muted small">BPA（最高の場合）</span><span class="num">${fmt(r.bpa)}</span><span class="muted small">WPA（最悪の場合）</span><span class="num">${fmt(r.wpa)}</span>`+
+    (T?`<span class="muted small">目標 ${fmt(T)}</span><span class="num">${tg}</span>`:'')+`</div>`+
+    (T&&curAo5!=null&&curAo5<=T?`<span class="tgchip">いまの ao5 は目標達成中</span>`:'')}
+$('#tgIn').addEventListener('input',e=>{const v=parseFloat(e.target.value);DB.settings.targets=DB.settings.targets||{};
+  if(v>0)DB.settings.targets[DB.ev]=Math.round(v*100)/100;else delete DB.settings.targets[DB.ev];save();const ts=curSession().solves.map(eff);renderNext(ts,ts.length?rolling(ts,5)[ts.length-1]:null)});
+
+function renderMain(){renderSessions();renderScr();renderBk();const s=curSession(),ts=s.solves.map(eff);
+  const r5=rolling(ts,5),r12=rolling(ts,12),r100=rolling(ts,100),n=ts.length,b=basic(ts);
+  const cur=a=>n?a[n-1]:null;
+  $('#qs').innerHTML=`<div class="h"></div><div class="h">現在</div><div class="h">ベスト</div>`+
+    [['単発',ts,1],['ao5',r5,5],['ao12',r12,12],['ao100',r100,100]].map(([l,a,N])=>`<div class="h">${l}</div><div>${avBtn(N,a,n-1)}</div><div>${avBtn(N,a,a.indexOf(bestOf(a)))}</div>`).join('')+
+    `<div class="h">平均</div><div>${fmt(b.mean)}</div><div class="muted">${n}回</div>`;
+  const best=bestOf(ts);let rows='';const lim=Math.max(0,n-500);
+  for(let i=n-1;i>=lim;i--){const sv=s.solves[i];rows+=`<tr class="s${openRow===i?' sel':''}" data-i="${i}"><td class="muted">${i+1}</td><td class="${ts[i]===best?'best':ts[i]===Infinity?'dnf':''}">${fmtSolve(sv)}</td><td>${avBtn(5,r5,i)}</td><td>${avBtn(12,r12,i)}</td></tr>`;
+    if(openRow===i)rows+=`<tr class="detail"><td colspan="4"><div class="small muted">${esc(new Date(sv.d).toLocaleString('ja-JP'))}</div><div class="num small" style="white-space:pre-line;margin:4px 0">${esc(sv.s||'')}</div><div class="row"><button data-rp="0">OK</button><button data-rp="2000">+2</button><button data-rp="-1">DNF</button><button data-rp="del">削除</button></div></td></tr>`}
+  $('#solveList').innerHTML=n?`<table><thead><tr><th>#</th><th>タイム</th><th>ao5</th><th>ao12</th></tr></thead><tbody>${rows}</tbody></table>`:`<div class="empty">まだ記録がありません。<br>スペースキーで計測を始めましょう。<br><button style="margin-top:10px" onclick="setTab('move')">csTimer の記録を移す</button></div>`;
+  renderNext(ts,cur(r5));
+  $('#optInsp').checked=DB.settings.inspect;$('#optHide').checked=DB.settings.hide;$('#optHold').value=String(DB.settings.hold);mainT.render()}
+$('#solveList').addEventListener('click',e=>{const b=e.target.closest('button[data-rp]');if(b){setPen(curSession(),openRow,b.dataset.rp);return}
+  const tr=e.target.closest('tr.s');if(tr){const i=+tr.dataset.i;openRow=openRow===i?-1:i;renderMain()}});
+
+/* ================= charts ================= */
+const cssv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function setupCanvas(cv,h){const w=Math.max(260,cv.parentElement.clientWidth),d=devicePixelRatio||1;cv.width=w*d;cv.height=h*d;cv.style.width=w+'px';cv.style.height=h+'px';const c=cv.getContext('2d');c.setTransform(d,0,0,d,0,0);return{c,w,h}}
+function niceStep(range,n){const raw=range/n||1,p=10**Math.floor(Math.log10(raw)),m=raw/p;return(m<1.5?1:m<3?2:m<7?5:10)*p}
+function lineChart(cv,series,o){const{c,w,h}=setupCanvas(cv,o.h||260),L=50,R=12,T=10,B=26;c.clearRect(0,0,w,h);
+  const ys=series.flatMap(s=>s.pts.map(p=>p[1])).filter(v=>isFinite(v)).sort((a,b)=>a-b);if(!ys.length)return;
+  const xmax=Math.max(1,...series.flatMap(s=>s.pts.map(p=>p[0])));let ymin=ys[0]*.95,ymax=Math.min(ys[ys.length-1],ys[Math.floor(ys.length*.97)]*1.15)*1.02;if(ymax<=ymin)ymax=ymin+1000;
+  const X=x=>L+(x-(o.x0??0))/(xmax-(o.x0??0)||1)*(w-L-R),Y=y=>T+(1-(Math.min(y,ymax)-ymin)/(ymax-ymin))*(h-T-B);
+  c.font='11px '+cssv('--f-mono');c.fillStyle=cssv('--muted');c.strokeStyle=cssv('--line');c.lineWidth=1;
+  const st=niceStep((ymax-ymin)/1000,5)*1000;for(let v=Math.ceil(ymin/st)*st;v<=ymax;v+=st){const y=Y(v);c.beginPath();c.moveTo(L,y);c.lineTo(w-R,y);c.stroke();c.textAlign='right';c.fillText(fmt(v),L-6,y+4)}
+  const xs=o.xticks||[];c.textAlign='center';xs.forEach(([x,l])=>c.fillText(l,X(x),h-8));
+  series.forEach(s=>{c.strokeStyle=s.color;c.fillStyle=s.color;c.lineWidth=s.width||2;
+    if(s.dots){s.pts.forEach(([x,y])=>{if(!isFinite(y))return;c.globalAlpha=s.alpha||1;c.beginPath();c.arc(X(x),Y(y),s.r||2,0,7);c.fill()});c.globalAlpha=1}
+    if(s.line){c.beginPath();let on=false;s.pts.forEach(([x,y])=>{if(!isFinite(y)||y==null){on=false;return}on?c.lineTo(X(x),Y(y)):c.moveTo(X(x),Y(y));on=true});c.stroke();
+      const lp=[...s.pts].reverse().find(p=>isFinite(p[1]));if(lp){c.beginPath();c.arc(X(lp[0]),Y(lp[1]),3.5,0,7);c.fill()}}})}
+function histogram(cv,ts,mark){const{c,w,h}=setupCanvas(cv,220),L=34,R=10,T=10,B=26;c.clearRect(0,0,w,h);const ok=ts.filter(isFinite).sort((a,b)=>a-b);if(ok.length<2)return;
+  const lo=ok[0],hi=ok[Math.floor(ok.length*.98)],st=Math.max(10,niceStep(hi-lo,14)),start=Math.floor(lo/st)*st,nb=Math.ceil((hi-start)/st)+1,bins=new Array(nb).fill(0);
+  ok.forEach(v=>{const k=Math.min(nb-1,Math.floor((v-start)/st));bins[k]++});const mx=Math.max(...bins),bw=(w-L-R)/nb;
+  c.font='11px '+cssv('--f-mono');c.fillStyle=cssv('--muted');c.strokeStyle=cssv('--line');
+  c.textAlign='right';[0,.5,1].forEach(f=>{const y=T+(1-f)*(h-T-B);c.beginPath();c.moveTo(L,y);c.lineTo(w-R,y);c.stroke();c.fillText(Math.round(mx*f),L-4,y+4)});
+  bins.forEach((v,i)=>{const bh=v/mx*(h-T-B);c.fillStyle=cssv('--accent');c.globalAlpha=.85;c.fillRect(L+i*bw+1,h-B-bh,bw-2,bh);c.globalAlpha=1});
+  c.fillStyle=cssv('--muted');c.textAlign='center';const every=Math.ceil(nb/7);for(let i=0;i<nb;i+=every)c.fillText(fmt(start+i*st),L+i*bw+bw/2,h-8);
+  if(mark){const x=L+(mark-start)/st*bw;if(x>L&&x<w-R){c.strokeStyle=cssv('--bad');c.setLineDash([4,3]);c.beginPath();c.moveTo(x,T);c.lineTo(x,h-B);c.stroke();c.setLineDash([])}}}
+
+/* ================= stats tab ================= */
+let chartMode='solve';
+const COND={W:5,K:5,X:15};
+function renderStats(){const ev=eventById(DB.ev),s=curSession(),ts=s.solves.map(eff),n=ts.length;
+  $('#stTitle').textContent=ev.name+' の統計';$('#stSess').textContent='セッション：'+s.name+'（上の「種目」とタイマー画面のセッションで切り替え）';
+  const body=$('#stBody');
+  const battleHtml=battleTable();
+  if(!n){body.innerHTML=`<div class="card empty">このセッションにはまだ記録がありません。<br>タイマーで計測するか、「記録の移行」タブから csTimer の記録やサンプル記録を読み込めます。</div>`+battleHtml;return}
+  const b=basic(ts),dnf=ts.filter(t=>t===Infinity).length;
+  const rows=[['単発',1],['mo3',3],['ao5',5],['ao12',12],['ao25',25],['ao50',50],['ao100',100],['ao200',200],['ao500',500],['ao1000',1000]].filter(r=>n>=r[1]);
+  const R={};rows.forEach(([l,N])=>R[l]=rolling(ts,N));
+  body.innerHTML=`
+  <div class="card"><div class="tiles">
+    <div class="tile"><span>回数</span><b>${n}</b></div><div class="tile"><span>ベスト</span><b>${fmt(bestOf(ts))}</b></div>
+    <div class="tile"><span>平均（DNF除く）</span><b>${fmt(b.mean)}</b></div><div class="tile"><span>中央値</span><b>${fmt(b.med)}</b></div>
+    <div class="tile"><span>ばらつき（標準偏差）</span><b>${b.sd==null?'–':(b.sd/1000).toFixed(2)+'s'}</b></div><div class="tile"><span>DNF率</span><b>${(dnf/n*100).toFixed(1)}%</b></div>
+  </div></div>
+  <div class="sgrid">
+    <div class="card"><h2>平均の記録</h2><div class="tbl"><table><thead><tr><th>種類</th><th>現在</th><th>ベスト</th><th>ベストの位置</th></tr></thead><tbody>
+      ${rows.map(([l,N])=>{const a=R[l],bv=bestOf(a),bi=a.indexOf(bv);return`<tr><td class="t">${l}</td><td>${avBtn(N,a,n-1)}</td><td class="best">${avBtn(N,a,bi)}</td><td class="muted">${bi<0?'–':(N>1?(bi-N+2)+'〜':'')+(bi+1)+'回目'}</td></tr>`}).join('')}
+    </tbody></table></div><p class="muted small">aoN は上下それぞれ5%（ao5・ao12は1回ずつ）を除いた平均。DNFは最も遅い扱いです。</p></div>
+    <div class="card"><h2>条件チェック</h2>
+      <div class="cond"><span>連続</span><input type="number" id="cW" min="1" max="1000" value="${COND.W}"><span>回のうち</span><input type="number" id="cK" min="1" max="1000" value="${COND.K}"><span>回以上が</span><input type="number" id="cX" min="0.01" step="0.01" value="${COND.X}"><span>秒未満</span></div>
+      <div class="chips"><button class="chip" data-c="5,5">5回中5回</button><button class="chip" data-c="12,12">12回中12回</button><button class="chip" data-c="12,10">12回中10回</button><button class="chip" data-c="50,45">50回中45回</button><button class="chip" data-c="100,90">100回中90回</button></div>
+      <div class="condres" id="condRes"></div></div>
+  </div>
+  <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">成長グラフ</h2><div class="seg"><button data-m="solve" aria-pressed="${chartMode==='solve'}">1回ごと</button><button data-m="day" aria-pressed="${chartMode==='day'}">日ごと</button></div></div>
+    <div style="margin-top:10px"><canvas id="cvGrowth"></canvas></div><div class="legend" id="lgGrowth"></div></div>
+  <div class="sgrid">
+    <div class="card"><h2>タイムの分布</h2><canvas id="cvHist"></canvas><p class="muted small">赤い点線：条件チェックの目標タイム</p></div>
+    <div class="card"><h2>日ごとの記録</h2><div class="tbl" style="max-height:260px;overflow:auto" id="dayTbl"></div></div>
+  </div>`+battleHtml;
+  renderCond(ts,s);drawGrowth(ts,s);histogram($('#cvHist'),ts,COND.X*1000);
+  const days=groupDays(s);$('#dayTbl').innerHTML=`<table><thead><tr><th>日付</th><th>回数</th><th>平均</th><th>ベスト</th><th>ベストao5</th></tr></thead><tbody>${days.slice().reverse().map(d=>`<tr><td class="t">${d.k}</td><td>${d.n}</td><td>${fmt(d.mean)}</td><td>${fmt(d.best)}</td><td>${fmt(d.ao5)}</td></tr>`).join('')}</tbody></table>`}
+function groupDays(s){const m=new Map();s.solves.forEach(v=>{const k=dayKey(v.d);if(!m.has(k))m.set(k,[]);m.get(k).push(eff(v))});
+  return[...m].sort((a,b)=>a[0]<b[0]?-1:1).map(([k,ts])=>({k,n:ts.length,mean:basic(ts).mean,best:bestOf(ts),ao5:bestOf(rolling(ts,5))}))}
+function renderCond(ts,s){const W=Math.max(1,Math.floor(COND.W)),K=Math.min(W,Math.max(1,Math.floor(COND.K))),X=COND.X*1000,r=checkCond(ts,W,K,X),el=$('#condRes');
+  const win=i=>{const a=i-W+1;return`<div class="small"><span class="muted">${a+1}〜${i+1}回目（${esc(new Date(s.solves[i].d).toLocaleDateString('ja-JP'))}）</span><br><span class="num">${ts.slice(a,i+1).map(t=>t<X?`<b class="best">${fmt(t)}</b>`:fmt(t)).join(' ')}</span></div>`};
+  el.innerHTML=(ts.length<W?`<span class="verdict no">回数が足りません（${W}回以上必要）</span>`:r.hits.length?`<span class="verdict yes">達成あり　${r.hits.length}か所</span>`:`<span class="verdict no">まだ達成していません</span>`)+
+    (r.hits.length?`<div><h3 style="margin:6px 0 2px">はじめて達成</h3>${win(r.hits[0])}</div>`+(r.hits.length>1?`<div><h3 style="margin:6px 0 2px">いちばん最近</h3>${win(r.hits[r.hits.length-1])}</div>`:''):'')+
+    `<div class="small">${COND.X}秒未満の割合：<b class="num">${(r.rate*100).toFixed(1)}%</b>　最長連続：<b class="num">${r.longest}回</b>　いまの連続：<b class="num">${r.current}回</b></div>`}
+function drawGrowth(ts,s){const cv=$('#cvGrowth');if(!cv)return;const A=cssv('--accent'),G=cssv('--good'),M=cssv('--muted'),W=cssv('--warn');
+  if(chartMode==='solve'){const r5=rolling(ts,5),r12=rolling(ts,12),r100=rolling(ts,100),n=ts.length,step=niceStep(n,6);const xt=[];for(let x=step;x<=n;x+=step)xt.push([x,String(x)]);
+    const ser=[{pts:ts.map((t,i)=>[i+1,t]),color:M,dots:true,alpha:.45,r:1.8},{pts:r5.map((t,i)=>[i+1,t]),color:A,line:true,width:1.5},{pts:r12.map((t,i)=>[i+1,t]),color:W,line:true,width:2}];
+    if(n>=100)ser.push({pts:r100.map((t,i)=>[i+1,t]),color:G,line:true,width:2.5});lineChart(cv,ser,{x0:1,xticks:xt});
+    $('#lgGrowth').innerHTML=`<span><i style="background:${M}"></i>1回ごと</span><span><i style="background:${A}"></i>ao5</span><span><i style="background:${W}"></i>ao12</span>${n>=100?`<span><i style="background:${G}"></i>ao100</span>`:''}`}
+  else{const d=groupDays(s),every=Math.max(1,Math.ceil(d.length/6));lineChart(cv,[{pts:d.map((x,i)=>[i,x.mean]),color:A,line:true,dots:true,r:3},{pts:d.map((x,i)=>[i,x.best]),color:G,line:true,dots:true,r:3,width:1.5}],{x0:0,xticks:d.map((x,i)=>[i,x.k.slice(5)]).filter((_,i)=>i%every===0)});
+    $('#lgGrowth').innerHTML=`<span><i style="background:${A}"></i>その日の平均</span><span><i style="background:${G}"></i>その日のベスト</span>`}}
+$('#stBody').addEventListener('click',e=>{const m=e.target.closest('[data-m]');if(m){chartMode=m.dataset.m;renderStats();return}
+  const c=e.target.closest('[data-c]');if(c){const[w,k]=c.dataset.c.split(',');COND.W=+w;COND.K=+k;renderStats()}});
+$('#stBody').addEventListener('input',e=>{if(!['cW','cK','cX'].includes(e.target.id))return;const v=parseFloat(e.target.value);if(!(v>0))return;COND[e.target.id.slice(1)]=v;
+  const s=curSession(),ts=s.solves.map(eff);renderCond(ts,s);histogram($('#cvHist'),ts,COND.X*1000)});
+addEventListener('resize',()=>{if(TAB==='stats'){const s=curSession(),ts=s.solves.map(eff);if(ts.length){drawGrowth(ts,s);histogram($('#cvHist'),ts,COND.X*1000)}}});
+
+/* battle records */
+function upsertBattle(rec){const i=DB.battles.findIndex(b=>b.k===rec.k);if(i>=0){const o=DB.battles[i];if(o.a.t===rec.a.t&&o.b.t===rec.b.t)return;DB.battles[i]=rec}else DB.battles.push(rec);save()}
+function battleTable(){if(!DB.battles.length)return`<div class="card"><h2>対戦成績</h2><p class="muted" style="margin:0">まだ対戦記録がありません。「2人対戦」か「オンライン対戦」で勝負すると、ここに相手ごと・種目ごとの成績が出ます。</p></div>`;
+  const g=new Map();DB.battles.forEach(b=>{const[x,y]=[b.a.n,b.b.n].sort();const k=b.ev+'\u0000'+x+'\u0000'+y;if(!g.has(k))g.set(k,{ev:b.ev,x,y,wx:0,wy:0,dr:0,tx:[],ty:[],n:0});const o=g.get(k);
+    const tx=b.a.n===x?b.a.t:b.b.t,ty=b.a.n===x?b.b.t:b.a.t,ex=tx<0?Infinity:tx,ey=ty<0?Infinity:ty;o.n++;o.tx.push(ex);o.ty.push(ey);if(ex<ey)o.wx++;else if(ey<ex)o.wy++;else o.dr++});
+  return`<div class="card"><h2>対戦成績</h2><div class="tbl"><table><thead><tr><th>種目</th><th>対戦</th><th>勝敗</th><th>引分</th><th>平均タイム</th><th>回数</th></tr></thead><tbody>${[...g.values()].map(o=>`<tr><td class="t">${esc(o.ev)}</td><td class="t">${esc(o.x)} vs ${esc(o.y)}</td><td>${o.wx} - ${o.wy}</td><td>${o.dr}</td><td>${fmt(basic(o.tx).mean)} / ${fmt(basic(o.ty).mean)}</td><td>${o.n}</td></tr>`).join('')}</tbody></table></div></div>`}
+
+/* ================= local battle ================= */
+const LB={ev:DB.ev,id:uid(),rounds:[]};
+function lbNewRound(){LB.rounds.push({scr:newScr(eventById(LB.ev)),a:null,b:null})}
+const lbCur=()=>LB.rounds[LB.rounds.length-1];
+const lbDone=r=>r.a&&r.b;
+const LT=[0,1].map(k=>new STimer({el:$('#lt'+(k+1)),opts:()=>({inspect:DB.settings.inspect,hold:+DB.settings.hold,hide:false}),
+  locked:()=>!lbCur()||!!lbCur()[k?'b':'a'],
+  onStop:({t,p})=>{lbCur()[k?'b':'a']={t,p};lbRecord();renderLocal()},
+  idleText:()=>{const c=lbCur(),r=c&&c[k?'b':'a'];return r?fmtSolve(r):'0.00'}}));
+LT.forEach((t,k)=>bindTouch($('#pl'+(k+1)),t));
+function lbRecord(){const ev=eventById(LB.ev);LB.rounds.forEach((r,i)=>{if(!lbDone(r))return;
+  upsertBattle({k:'L'+LB.id+':'+i,d:Date.now(),ev:ev.name,mode:'local',a:{n:DB.settings.p1,t:r.a.p===-1?-1:r.a.t+r.a.p},b:{n:DB.settings.p2,t:r.b.p===-1?-1:r.b.t+r.b.p}})})}
+function lbNext(){if(!lbDone(lbCur()))return;lbNewRound();LT.forEach(t=>t.reset());renderLocal()}
+$('#lbNext').addEventListener('click',lbNext);
+$('#lbReset').addEventListener('click',()=>{LB.id=uid();LB.rounds=[];lbNewRound();LT.forEach(t=>t.reset());renderLocal();toast('新しい対戦を始めました')});
+$('#lbEv').addEventListener('change',e=>{LB.ev=e.target.value;LB.id=uid();LB.rounds=[];lbNewRound();LT.forEach(t=>t.reset());renderLocal()});
+['p1n','p2n'].forEach((id,k)=>$('#'+id).addEventListener('change',e=>{DB.settings[k?'p2':'p1']=e.target.value.trim().slice(0,20)||('プレイヤー'+(k+1));save();renderLocal()}));
+document.querySelector('#tab-local .duo').addEventListener('click',e=>{const b=e.target.closest('button[data-lp]');if(!b)return;const r=lbCur(),k=b.dataset.lp==='1'?'b':'a';
+  if(r[k]){r[k].p=+b.dataset.pen;lbRecord();LT[+b.dataset.lp].render();renderLocal()}});
+function renderLocal(){const ev=eventById(LB.ev),r=lbCur();$('#p1n').value=DB.settings.p1;$('#p2n').value=DB.settings.p2;$('#pl1n').textContent=DB.settings.p1;$('#pl2n').textContent=DB.settings.p2;
+  $('#lbRound').textContent=ev.name+'　ラウンド '+LB.rounds.length;setScrText($('#lbScr'),r.scr||'（手順なし）',ev);$('#lbDiag').innerHTML=diagram(ev,r.scr);
+  let w1=0,w2=0;const rows=LB.rounds.map((x,i)=>{if(!lbDone(x))return'';const a=eff(x.a),b=eff(x.b);if(a<b)w1++;else if(b<a)w2++;
+    return`<tr><td class="t">${i+1}</td><td class="${a<b?'best':''}">${fmtSolve(x.a)}</td><td class="${b<a?'best':''}">${fmtSolve(x.b)}</td><td class="t">${a<b?esc(DB.settings.p1):b<a?esc(DB.settings.p2):'引き分け'}</td></tr>`}).reverse().join('');
+  $('#lbScore').textContent=w1+' - '+w2;$('#lbNext').disabled=!lbDone(r);
+  const done=lbDone(r),a=r.a&&eff(r.a),b=r.b&&eff(r.b);$('#pl1').classList.toggle('win',!!done&&a<b);$('#pl2').classList.toggle('win',!!done&&b<a);
+  $('#lbHist').innerHTML=rows?`<table><thead><tr><th>R</th><th>${esc(DB.settings.p1)}</th><th>${esc(DB.settings.p2)}</th><th>勝者</th></tr></thead><tbody>${rows}</tbody></table>`:'<p class="muted" style="margin:0">2人とも解き終わると、ここに結果が並びます。</p>';
+  LT.forEach(t=>t.render())}
+
+/* ================= online battle ================= */
+const ON={nr:null,code:'',def:null,ev:null,raw:[],peers:[],st:'idle'};
+const caps={};async function cap(n){if(n in caps)return caps[n];try{caps[n]=window.claude&&window.claude.use?await window.claude.use(n):null}catch(e){caps[n]=null}return caps[n]}
+const onRes=()=>ON.raw.map(r=>r.p===-1?-1:r.t+r.p);
+function onScramble(r){return ON.ev?ON.ev.scr(mulberry32(hashStr(ON.code+'#'+r))):''}
+function onPresence(){if(!ON.nr)return;ON.nr.presence({nick:DB.settings.nick||'ゲスト',def:ON.def,res:onRes(),st:ON.st}).catch(()=>{})}
+const onT=new STimer({el:$('#onDisp'),opts:timerOpts,locked:()=>!ON.ev||ON.raw.length>=150,
+  onStart:()=>{ON.st='solving';onPresence()},onCancel:()=>{ON.st='idle';onPresence()},
+  onStop:({t,p})=>{ON.raw.push({t,p});ON.st='idle';onPresence();renderOnline()},
+  idleText:()=>ON.raw.length?fmtSolve(ON.raw[ON.raw.length-1]):'0.00'});
+bindTouch($('#onArea'),onT);
+async function onEnter(code,def){const err=$('#onErr');err.textContent='';code=code.trim().toLowerCase();
+  if(!/^[a-z0-9][a-z0-9_.-]{0,47}$/.test(code)){err.textContent='ルームコードは半角の英小文字・数字で入力してください。';return}
+  const nick=$('#onNick').value.trim().slice(0,20);if(!nick){err.textContent='ニックネームを入れてください。';$('#onNick').focus();return}DB.settings.nick=nick;save();
+  const room=await cap('room');if(!room){err.textContent='オンライン対戦は claude.ai 上でこのページを開いたとき（サインイン中）だけ使えます。';return}
+  try{ON.nr=await room.join(code)}catch(e){err.textContent='ルームに入れませんでした（'+(e&&e.code||'error')+'）。少し待ってもう一度試してください。';return}
+  ON.code=code;ON.def=def;ON.ev=def?resolveEvent(def):null;ON.raw=[];ON.st='idle';onT.reset();
+  ON.nr.onPeers(ch=>{ON.peers=ch.peers;if(!ON.ev){const p=ch.peers.find(x=>!x.sameTab&&x.presence&&x.presence.def);if(p){ON.def=cleanDef(p.presence.def);ON.ev=resolveEvent(ON.def);onPresence()}}onRecord();renderOnline()},
+    e=>{$('#onErr').textContent='接続が切れました（'+e.code+'）。';});
+  onPresence();renderOnline()}
+$('#onCreate').addEventListener('click',()=>{const id=$('#onEv').value;onEnter('cl-'+Math.random().toString(36).slice(2,8),defOf(id))});
+$('#onJoin').addEventListener('click',()=>onEnter($('#onCode').value,null));
+$('#onLeave').addEventListener('click',async()=>{if(ON.nr){try{await ON.nr.leave()}catch(e){}}ON.nr=null;ON.ev=null;ON.def=null;ON.peers=[];onT.reset();renderOnline()});
+$('#onCopy').addEventListener('click',()=>{const t=ON.code;navigator.clipboard.writeText(t).then(()=>toast('コードをコピーしました')).catch(()=>{const r=document.createRange();r.selectNodeContents($('#onCodeShow'));getSelection().removeAllRanges();getSelection().addRange(r);toast('選択しました。コピーしてください')})});
+document.querySelector('#onRoom').addEventListener('click',e=>{const b=e.target.closest('button[data-op]');if(!b||!ON.raw.length||onT.st==='run')return;ON.raw[ON.raw.length-1].p=+b.dataset.op;onPresence();onT.render();onRecord();renderOnline()});
+function others(){return ON.peers.filter(p=>!p.sameTab&&p.kind==='viewer'&&p.presence&&typeof p.presence.nick==='string')}
+const pnick=p=>String(p.presence.nick).replace(/[\u0000-\u001f]/g,'').slice(0,20)||'ゲスト';
+const pres=p=>Array.isArray(p.presence.res)?p.presence.res.slice(0,150).map(v=>typeof v==='number'?v:null):[];
+function onRecord(){if(!ON.ev)return;const me=onRes(),nick=DB.settings.nick||'ゲスト';others().forEach(p=>{const pr=pres(p),pn=pnick(p);
+  for(let i=0;i<Math.min(me.length,pr.length);i++){if(pr[i]==null)continue;upsertBattle({k:'O'+ON.code+':'+i+':'+pn,d:Date.now(),ev:ON.ev.name,mode:'online',a:{n:nick,t:me[i]},b:{n:pn,t:pr[i]}})}})}
+function renderOnline(){$('#onNick').value=DB.settings.nick||'';$('#onEv').innerHTML=eventOptions($('#onEv').value||DB.ev);
+  const inRoom=!!ON.nr;$('#onLobby').hidden=inRoom;$('#onRoom').hidden=!inRoom;if(!inRoom)return;
+  $('#onCodeShow').textContent=ON.code;$('#onEvName').textContent=ON.ev?ON.ev.name:'（相手の種目を待っています）';
+  const os=others(),me=onRes(),nick=DB.settings.nick||'ゲスト';
+  $('#onPeers').innerHTML=`<div class="peer"><span class="dot on"></span><b>${esc(nick)}</b><span class="muted small">あなた・${me.length}ラウンド完了</span></div>`+
+    (os.length?os.map(p=>`<div class="peer"><span class="dot ${p.presence.st==='solving'?'solving':'on'}"></span><b>${esc(pnick(p))}</b><span class="muted small">${p.presence.st==='solving'?'計測中':pres(p).length+'ラウンド完了'}${p.guest?'・ゲスト':''}</span></div>`).join(''):`<p class="muted small" style="margin:4px 0 0">相手を待っています。ルームコード <b class="num">${esc(ON.code)}</b> を相手に伝えてください。</p>`);
+  const r=me.length+1;$('#onRound').textContent='ラウンド '+r;const scr=onScramble(r);
+  setScrText($('#onScr'),ON.ev?(scr||'（手順なし）'):'相手の種目情報を待っています…',ON.ev);$('#onDiag').innerHTML=ON.ev?diagram(ON.ev,scr):'';
+  const cols=[{n:nick+'（あなた）',res:me},...os.map(p=>({n:pnick(p),res:pres(p)}))],max=Math.max(0,...cols.map(c=>c.res.length));const wins=cols.map(()=>0);let rows='';
+  for(let i=0;i<max;i++){const vals=cols.map(c=>c.res[i]==null?null:(c.res[i]<0?Infinity:c.res[i]));const full=vals.every(v=>v!=null)&&cols.length>1;let bi=-1;
+    if(full){const m=Math.min(...vals);if(vals.filter(v=>v===m).length===1&&m!==Infinity){bi=vals.indexOf(m);wins[bi]++}}
+    rows=`<tr><td class="t">${i+1}</td>${vals.map((v,k)=>`<td class="${k===bi?'best':''}">${v==null?'<span class="muted">…</span>':fmt(v)}</td>`).join('')}</tr>`+rows}
+  $('#onScore').textContent=cols.length>1?wins.join(' - '):'';
+  $('#onTable').innerHTML=max?`<table><thead><tr><th>R</th>${cols.map(c=>`<th>${esc(c.n)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`:'<p class="muted" style="margin:0">解き終わると結果がここに並びます。</p>';onT.render()}
+
+/* ================= WCA ================= */
+// our event id -> WCA event id; avg = how WCA averages that event (ao5 or mo3)
+const WCAEV=[['222','222',5],['333','333',5],['444','444',5],['555','555',5],['666','666',3],['777','777',3],['333oh','333oh',5],['333bf','333bf',3],['pyra','pyram',5],['skewb','skewb',5],['mega','minx',5],['sq1','sq1',5],['clock','clock',5]];
+const WCA_API='https://www.worldcubeassociation.org/api/v0/';
+async function wcaGet(path){const r=await fetch(WCA_API+path,{headers:{Accept:'application/json'}});if(r.status===404)throw new Error('notfound');if(!r.ok)throw new Error('http '+r.status);return r.json()}
+const cs2ms=v=>typeof v==='number'&&v>0?v*10:null;
+function trimRecs(o){const pick=x=>{const r={};WCAEV.forEach(([,w])=>{const e=x&&x[w];if(e)r[w]={s:cs2ms(e.single),a:cs2ms(e.average)}});return r};
+  const nr={};Object.keys(o.national_records||{}).forEach(c=>{nr[c]=pick(o.national_records[c])});return{wr:pick(o.world_records),nr}}
+function trimPerson(o){const p=o.person||{},pr={};WCAEV.forEach(([,w])=>{const e=o.personal_records&&o.personal_records[w];if(!e)return;
+    const g=x=>x&&{best:cs2ms(x.best),wr:x.world_rank,nr:x.country_rank,cr:x.continent_rank};pr[w]={s:g(e.single),a:g(e.average)}});
+  const av=p.avatar&&typeof p.avatar.thumb_url==='string'&&p.avatar.thumb_url.startsWith('https://avatars.worldcubeassociation.org/')&&!p.avatar.is_default?p.avatar.thumb_url:'';
+  return{id:String(p.wca_id||p.id||''),name:String(p.name||''),country:String(p.country&&p.country.id||''),countryName:String(p.country&&p.country.name||''),comps:+o.competition_count||0,av,pr}}
+function practiceBest(ev,N){let s=null,a=null;sessionsOf(ev).forEach(x=>{const ts=x.solves.map(eff),b=bestOf(ts),r=bestOf(rolling(ts,N));if(b!=null&&b!==Infinity&&(s==null||b<s))s=b;if(r!=null&&r!==Infinity&&(a==null||r<a))a=r});return{s,a}}
+const diff=(a,b)=>a==null||b==null?'–':(a<=b?'−':'+')+fmt(Math.abs(a-b));
+function renderWCA(){const W=DB.wca;$('#wcaId').value=W.id||'';
+  const cs=W.rec?Object.keys(W.rec.nr).sort():['Japan'];if(!cs.includes(W.country))cs.unshift(W.country);
+  $('#wcaCountry').innerHTML=cs.map(c=>`<option value="${esc(c)}"${c===W.country?' selected':''}>${esc(c==='Japan'?'日本 (Japan)':c)}</option>`).join('');
+  const P=W.person,pc=$('#wcaPerson');pc.hidden=!P;
+  if(P)pc.innerHTML=`<div class="row" style="gap:14px">${P.av?`<img src="${esc(P.av)}" alt="" width="56" height="56" style="border-radius:50%;object-fit:cover" onerror="this.remove()">`:''}<div><div style="font-weight:700;font-size:17px">${esc(P.name)}</div><div class="muted small">${esc(P.id)}・${esc(P.countryName)}・大会出場 ${P.comps}回</div><a class="small" href="https://www.worldcubeassociation.org/persons/${encodeURIComponent(P.id)}" target="_blank" rel="noopener">WCA のプロフィールを開く</a></div></div>`;
+  const nr=W.rec&&W.rec.nr[W.country]||{},wr=W.rec&&W.rec.wr||{},cn=W.country==='Japan'?'日本':W.country;
+  if(!W.rec&&!P){$('#wcaTable').innerHTML='<div class="empty">「WCA から取得」を押すと、ここに公式記録との比較が出ます。</div>';return}
+  let rows='';WCAEV.forEach(([ev,w,N])=>{const pb=practiceBest(ev,N),pr=P&&P.pr[w];
+    [['単発','s',pb.s],[N===3?'mo3':'ao5','a',pb.a]].forEach(([lab,k,mine],j)=>{const off=pr&&pr[k],o=off&&off.best,n=nr[w]&&nr[w][k],x=wr[w]&&wr[w][k];if(mine==null&&o==null&&n==null&&x==null)return;
+      rows+=`<tr><td class="t">${j?'':esc(BMAP[ev].name)}</td><td class="t muted">${lab}</td><td class="${mine!=null&&o!=null&&mine<o?'best':''}">${fmt(mine)}</td><td>${fmt(o)}${off&&off.nr?`<div class="muted small">国内${off.nr}位・世界${off.wr}位</div>`:''}</td><td>${diff(mine,o)}</td><td>${fmt(n)}</td><td>${diff(mine,n)}</td><td>${fmt(x)}</td><td>${diff(mine,x)}</td></tr>`})});
+  $('#wcaTable').innerHTML=`<table><thead><tr><th>種目</th><th></th><th>練習ベスト</th><th>公式ベスト${P?'':'（ID未入力）'}</th><th>公式との差</th><th>${esc(cn)}記録</th><th>差</th><th>世界記録</th><th>差</th></tr></thead><tbody>${rows}</tbody></table>`;
+  if(W.at)$('#wcaMsg').textContent='最終取得：'+new Date(W.at).toLocaleString('ja-JP')+'（もう一度押すと最新にします）'}
+$('#wcaCountry').addEventListener('change',e=>{DB.wca.country=e.target.value;save();renderWCA()});
+$('#wcaFetch').addEventListener('click',async()=>{const id=$('#wcaId').value.trim().toUpperCase(),msg=$('#wcaMsg'),btn=$('#wcaFetch');
+  if(id&&!/^\d{4}[A-Z]{4}\d{2}$/.test(id)){msg.textContent='WCA ID は「2015TANA01」のように 数字4桁＋英字4文字＋数字2桁 です。';return}
+  btn.disabled=true;msg.textContent='WCA から取得しています…';
+  try{const[rec,per]=await Promise.all([wcaGet('records'),id?wcaGet('persons/'+id):null]);
+    DB.wca.rec=trimRecs(rec);DB.wca.id=id;DB.wca.person=per?trimPerson(per):null;if(DB.wca.person&&DB.wca.person.country&&!DB.wca.countryTouched)DB.wca.country=DB.wca.person.country;DB.wca.at=Date.now();save();renderWCA();toast('WCA の記録を取得しました')}
+  catch(e){msg.textContent=e.message==='notfound'?'その WCA ID の選手が見つかりませんでした。':'WCA に接続できませんでした。通信状態を確かめてもう一度試してください（表示環境によっては外部サイトへの接続が止められていることがあります）。'}
+  finally{btn.disabled=false}});
+$('#wcaCountry').addEventListener('change',()=>{DB.wca.countryTouched=true;save()});
+
+/* ================= data tab ================= */
+function renderData(){$('#ceBase').innerHTML=`<option value="nxn">N×N キューブ（サイズを指定）</option>`+BUILTIN.map(e=>`<option value="${e.id}">${esc(e.name)} と同じ手順</option>`).join('')+`<option value="none">手順なし（タイマーだけ使う）</option>`;
+  $('#ceBase').value=CE.base;$('#ceNxn').hidden=CE.base!=='nxn';
+  $('#ceList').innerHTML=DB.custom.length?`<h3>追加した種目</h3>`+DB.custom.map(c=>`<div class="row" style="justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)"><span><b>${esc(c.name)}</b> <span class="muted small">${c.base==='nxn'?c.n+'×'+c.n+'・'+c.len+'手':c.base==='none'?'手順なし':esc(BMAP[c.base].name)+'の手順'}</span></span><button class="ghost" data-cdel="${esc(c.id)}">${CE.del===c.id?'もう一度押すと削除':'削除'}</button></div>`).join(''):'<p class="muted small">追加した種目はまだありません。追加すると上の「種目」から選べ、2人対戦・オンライン対戦でも使えます。</p>'}
+const CE={base:'nxn',del:null};
+$('#ceBase').addEventListener('change',e=>{CE.base=e.target.value;renderData()});
+$('#ceAdd').addEventListener('click',()=>{const name=$('#ceName').value.trim();if(!name){toast('名前を入れてください');$('#ceName').focus();return}
+  const d=cleanDef({id:'c'+uid(),name,base:CE.base,n:+$('#ceN').value,len:+$('#ceLen').value});DB.custom.push(d);DB.ev=d.id;save();$('#ceName').value='';fillEventSelects();curScr=newScr(eventById(DB.ev));renderData();renderMain();toast('「'+name+'」を追加しました')});
+$('#ceList').addEventListener('click',e=>{const b=e.target.closest('[data-cdel]');if(!b)return;const id=b.dataset.cdel;if(CE.del!==id){CE.del=id;renderData();return}
+  DB.custom=DB.custom.filter(c=>c.id!==id);CE.del=null;if(DB.ev===id)DB.ev='333';save();fillEventSelects();curScr=newScr(eventById(DB.ev));renderData();renderMain();toast('種目を削除しました（記録は残っています）')});
+// resolves true once the file is saved (or shown for copying), false if the viewer declined
+async function offerFile(name,text){
+  if(!window.claude){try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('保存しました');$('#exOut').hidden=true;return true}catch(e){}}
+  const dl=await cap('downloads');if(dl){try{await dl.save({filename:name,data:text});toast('保存しました');$('#exOut').hidden=true;return true}catch(e){if(e&&e.code==='declined')return false}}
+  $('#exText').value=text;$('#exOut').hidden=false;return true}
+const backupJSON=()=>JSON.stringify({app:'cubelab',v:1,at:Date.now(),sessions:DB.sessions,custom:DB.custom,battles:DB.battles,settings:DB.settings});
+async function exportBackup(){if(await offerFile('cubelab-'+dayKey(Date.now())+'.json',backupJSON())){DB.meta.lastExport=Date.now();DB.meta.exportedCount=totalSolves();save();renderBk();renderMove()}}
+$('#exJson').addEventListener('click',exportBackup);
+
+/* backup status, reminder and automatic snapshot */
+function renderBk(){const n=totalSolves(),fresh=n-DB.meta.exportedCount,days=DB.meta.lastExport?(Date.now()-DB.meta.lastExport)/864e5:Infinity,el=$('#bkNote');
+  const due=fresh>=50||(fresh>0&&days>=14)||(!DB.meta.lastExport&&n>=30);el.hidden=!due;
+  if(due)el.innerHTML=`${DB.meta.lastExport?'前回のバックアップから':'まだ一度もバックアップしていません。今の記録は'} <b class="num">${fresh}回</b>${DB.meta.lastExport?'増えました。':'です。'}<br><button id="bkNow" class="pri" style="margin-top:6px">今すぐ書き出す</button> <button id="bkHow" class="ghost" style="margin-top:6px">くわしく</button>`}
+$('#bkNote').addEventListener('click',e=>{if(e.target.id==='bkNow')exportBackup();if(e.target.id==='bkHow')setTab('move')});
+function readSnap(){try{const o=JSON.parse(lsGet(SNAP)||'null');const db=o&&JSON.parse(o.db);return db&&Array.isArray(db.sessions)?{at:o.at,db}:null}catch(e){return null}}
+function renderMove(){const n=totalSolves(),sn=readSnap();
+  $('#mvTiles').innerHTML=`<div class="tile"><span>保存中の記録</span><b>${n}回</b></div><div class="tile"><span>セッション</span><b>${DB.sessions.filter(s=>s.solves.length).length}</b></div>`+
+    `<div class="tile"><span>最後のバックアップ</span><b style="font-size:15px">${DB.meta.lastExport?esc(new Date(DB.meta.lastExport).toLocaleDateString('ja-JP')):'まだ'}</b></div>`+
+    `<div class="tile"><span>ブラウザによる自動削除</span><b style="font-size:15px">${STORE.persisted?'されない設定':'ブラウザ次第'}</b></div>`;
+  $('#snapBox').innerHTML=`<h3 style="margin-top:16px">自動バックアップ</h3>`+(sn?`<p class="muted small" style="margin:0 0 6px">${esc(new Date(sn.at).toLocaleString('ja-JP'))} 時点・${sn.db.sessions.reduce((a,s)=>a+(s.solves||[]).length,0)}回分。1日1回、自動でこのブラウザ内に取っています。</p><button id="snapRestore">自動バックアップから戻す</button>`:'<p class="muted small" style="margin:0">記録がある状態で次の日にタイマーを使うと、前の日の状態がここに自動で残ります。</p>')}
+$('#snapBox').addEventListener('click',e=>{if(e.target.id!=='snapRestore')return;const sn=readSnap();if(!sn)return;const r=mergeBackup(sn.db);save();fillEventSelects();renderMain();renderMove();
+  $('#imMsg').textContent=r.ns?`自動バックアップから ${r.ns}セッション・${r.nv}回分を戻しました。`:'戻す必要のある記録はありませんでした（すべて残っています）。'});
+
+/* merging imported sessions: identical sessions are skipped so a file can be loaded twice safely */
+const sessSig=sv=>sv.length+':'+(sv[0]?sv[0].t+'@'+Math.floor(sv[0].d/1000):'')+':'+(sv.length?Math.floor(sv[sv.length-1].d/1000):'');
+// returns how many solves were actually added; a known session only gets the solves it is missing
+function addSess(s){if(!s.solves.length)return 0;const ex=DB.sessions.find(x=>x.id===s.id);
+  if(ex){const have=new Set(ex.solves.map(v=>v.d+':'+v.t)),add=s.solves.filter(v=>!have.has(v.d+':'+v.t));if(!add.length)return 0;ex.solves=ex.solves.concat(add).sort((a,b)=>a.d-b.d);return add.length}
+  const g=sessSig(s.solves);if(DB.sessions.some(x=>sessSig(x.solves)===g))return 0;DB.sessions.push(s);return s.solves.length}
+const cleanSolves=a=>(a||[]).filter(v=>v&&typeof v.t==='number').map(v=>({t:v.t,p:v.p===-1||v.p===2000?v.p:0,s:String(v.s||''),d:+v.d||Date.now()}));
+function mergeBackup(o){let ns=0,nv=0,sk=0;(o.custom||[]).forEach(c=>{const d=cleanDef(c);if(d&&!DB.custom.some(x=>x.id===d.id))DB.custom.push(d)});
+  (o.sessions||[]).forEach(s=>{if(!s||!Array.isArray(s.solves))return;const sv=cleanSolves(s.solves);
+    const k=addSess({id:typeof s.id==='string'&&s.id?s.id.slice(0,40):uid(),ev:String(s.ev||'333'),name:String(s.name||'読み込み').slice(0,40),solves:sv});if(k){ns++;nv+=k}else if(sv.length)sk++});
+  (o.battles||[]).forEach(b=>{if(b&&b.k&&b.a&&b.b&&!DB.battles.some(x=>x.k===b.k))DB.battles.push(b)});return{ns,nv,sk}}
+$('#exCsv').addEventListener('click',()=>{const q=v=>'"'+String(v).replace(/"/g,'""')+'"';let out='event,session,no,time_ms,penalty,result,scramble,date\n';
+  DB.sessions.forEach(s=>{const en=eventById(s.ev).name;s.solves.forEach((v,i)=>{out+=[q(en),q(s.name),i+1,v.t,v.p===-1?'DNF':v.p?'+2':'',q(fmtSolve(v)),q((v.s||'').replace(/\n/g,' ')),q(new Date(v.d).toISOString())].join(',')+'\n'})});offerFile('cubelab-'+dayKey(Date.now())+'.csv',out)});
+$('#exCopy').addEventListener('click',()=>{const t=$('#exText');navigator.clipboard.writeText(t.value).then(()=>toast('コピーしました')).catch(()=>{t.select();toast('選択しました。Ctrl+C でコピーしてください')})});
+const CST={'333':'333','222so':'222','444wca':'444','555wca':'555','666wca':'666','777wca':'777','pyrso':'pyra','mgmp':'mega','skbso':'skewb','sqrs':'sq1','clkwca':'clock','333oh':'333oh','333ni':'333bf'};
+const CST_REV={};Object.entries(CST).forEach(([k,v])=>{if(!(v in CST_REV))CST_REV[v]=k});
+$('#exCst').addEventListener('click',()=>{const o={},meta={};let n=0;
+  DB.sessions.forEach(s=>{if(!s.solves.length)return;n++;const ev=eventById(s.ev),base=ev.custom&&ev.custom.base&&BMAP[ev.custom.base]?ev.custom.base:s.ev;
+    o['session'+n]=s.solves.map(v=>[[v.p,v.t],v.s||'','',Math.floor(v.d/1000)]);meta[n]={name:ev.name+' '+s.name,opt:{scrType:CST_REV[base]||'333'},rank:n}});
+  if(!n){toast('書き出す記録がありません');return}
+  o.properties={sessionData:JSON.stringify(meta),sessionN:n};offerFile('cstimer-'+dayKey(Date.now())+'.txt',JSON.stringify(o))});
+/* import: both file buttons and drag & drop feed importText */
+function importFile(f,msg){if(!f)return;msg.textContent='読み込んでいます…';const rd=new FileReader();rd.onload=()=>importText(String(rd.result),msg);rd.onerror=()=>{msg.textContent='ファイルを開けませんでした。'};rd.readAsText(f)}
+[['#imFile','#imMsg'],['#imFileCst','#imMsgCst']].forEach(([i,m])=>$(i).addEventListener('change',e=>{importFile(e.target.files[0],$(m));e.target.value=''}));
+$$('.dropzone').forEach(z=>{z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('over')});z.addEventListener('dragleave',()=>z.classList.remove('over'));
+  z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('over');importFile(e.dataTransfer.files[0],z.querySelector('[id^=imMsg]'))})});
+// phones: hand the backup file straight to LINE / AirDrop / Drive via the share sheet
+const shareOK=(()=>{try{return!!(navigator.canShare&&navigator.canShare({files:[new File(['{}'],'t.json',{type:'application/json'})]}))}catch(e){return false}})();
+$('#exShare').hidden=!shareOK;
+$('#exShare').addEventListener('click',async()=>{const f=new File([backupJSON()],'cubelab-'+dayKey(Date.now())+'.json',{type:'application/json'});
+  try{await navigator.share({files:[f],title:'CubeLab Timer のバックアップ'});DB.meta.lastExport=Date.now();DB.meta.exportedCount=totalSolves();save();renderBk();renderMove()}
+  catch(e){if(e&&e.name!=='AbortError'){toast('共有できなかったので、ファイルとして書き出します');exportBackup()}}});
+function importText(text,msg){let o;
+  try{o=JSON.parse(text)}catch(x){msg.textContent='読み込めませんでした。csTimer の「ファイルにエクスポート」で保存したファイルか、CubeLab のバックアップを選んでください。';return}
+  if(o&&o.app==='cubelab'){const r=mergeBackup(o);finishImport(msg,r.ns,r.nv,r.sk);return}
+  if(o&&Object.keys(o).some(k=>/^session\d+$/.test(k))){const list=parseCst(o);
+    if(!list.length){msg.textContent='このファイルには記録の入ったセッションがありませんでした。';return}
+    msg.textContent='';openPick(list,msg);return}
+  msg.textContent='このファイルの形式には対応していません（CubeLab のバックアップか、csTimer で書き出したファイルを選んでください）。'}
+function finishImport(msg,ns,nv,sk){save();askPersist();fillEventSelects();renderMain();renderData();renderMove();
+  msg.textContent=(ns?`✓ ${ns}セッション・${nv}回分を読み込みました。タイマー画面右上のセッション欄から選べます。`:'新しく追加する記録はありませんでした。')+(sk?`（すでに入っている ${sk}セッションは飛ばしました）`:'');
+  if(ns)toast(`${nv}回分の記録を読み込みました`)}
+
+/* csTimer file -> list of sessions the viewer picks from (unwanted timers can be left out, events corrected) */
+function parseCst(o){let meta={};const sd=o.properties&&o.properties.sessionData;
+  try{meta=typeof sd==='string'?JSON.parse(sd):(sd&&typeof sd==='object'?sd:{})}catch(x){}
+  return Object.keys(o).filter(k=>/^session\d+$/.test(k)).sort((a,b)=>{const ra=(meta[a.slice(7)]||{}).rank,rb=(meta[b.slice(7)]||{}).rank;return(ra??+a.slice(7))-(rb??+b.slice(7))}).map(k=>{
+    const arr=o[k];if(!Array.isArray(arr))return null;const num=k.slice(7),m=meta[num]||{},st=String((m.opt&&m.opt.scrType)||'333');
+    const sv=arr.filter(x=>Array.isArray(x)&&Array.isArray(x[0])).map(x=>({t:+x[0][1]||0,p:x[0][0]===-1?-1:x[0][0]===2000?2000:0,s:String(x[1]||''),d:(+x[3]||0)*1000||Date.now()}));
+    if(!sv.length)return null;const name=String(m.name!=null?m.name:num).replace(/[\u0000-\u001f]/g,'').slice(0,32);
+    return{name,st,ev:CST[st]||(DB.custom.find(c=>c.name==='csTimer '+st)||{}).id||'__new',sv}}).filter(Boolean)}
+let PICK=null;
+function openPick(list,msg){PICK={list,msg};const fd=d=>new Date(d).toLocaleDateString('ja-JP');
+  $('#pickSub').textContent=`csTimer のファイルに ${list.length}個のセッションがありました。読み込みたいものだけにチェックを入れてください。種目がちがうときは右で直せます。`;
+  $('#pickList').innerHTML=list.map((x,i)=>`<div class="pk"><input type="checkbox" id="pk${i}" data-i="${i}" checked><label for="pk${i}"><b>${esc(x.name)}</b><span class="muted small">${x.sv.length}回・${fd(x.sv[0].d)}〜${fd(x.sv[x.sv.length-1].d)}</span></label>`+
+    `<select data-ev="${i}" aria-label="${esc(x.name)} の種目">${eventOptions(x.ev)}${x.ev==='__new'?`<option value="__new" selected>新しい種目「csTimer ${esc(x.st)}」</option>`:''}</select></div>`).join('');
+  pickSum();$('#pickDlg').showModal()}
+function pickSum(){const c=$$('#pickList input:checked').map(b=>PICK.list[+b.dataset.i]);$('#pickSum').textContent=`${c.length}セッション・${c.reduce((a,x)=>a+x.sv.length,0)}回分`;$('#pickGo').disabled=!c.length}
+$('#pickList').addEventListener('change',pickSum);
+$('#pickAll').addEventListener('click',()=>{$$('#pickList input').forEach(b=>b.checked=true);pickSum()});
+$('#pickNone').addEventListener('click',()=>{$$('#pickList input').forEach(b=>b.checked=false);pickSum()});
+$('#pickFew').addEventListener('click',()=>{$$('#pickList input').forEach(b=>{if(PICK.list[+b.dataset.i].sv.length<10)b.checked=false});pickSum()});
+$('#pickClose').addEventListener('click',()=>{$('#pickDlg').close();if(PICK)PICK.msg.textContent='読み込みをやめました。'});
+$('#pickGo').addEventListener('click',()=>{let ns=0,nv=0,sk=0;
+  $$('#pickList input:checked').forEach(b=>{const i=+b.dataset.i,x=PICK.list[i];let ev=$(`#pickList select[data-ev="${i}"]`).value;
+    if(ev==='__new'){let c=DB.custom.find(c=>c.name==='csTimer '+x.st);if(!c){c=cleanDef({id:'c'+uid(),name:'csTimer '+x.st,base:'none'});DB.custom.push(c)}ev=c.id}
+    const added=addSess({id:uid(),ev,name:'csTimer '+x.name,solves:x.sv});if(added){ns++;nv+=added}else sk++});
+  $('#pickDlg').close();finishImport(PICK.msg,ns,nv,sk);PICK=null});
+$('#sample').addEventListener('click',()=>{const rng=mulberry32(42),sv=[],start=Date.now()-30*864e5;
+  for(let i=0;i<320;i++){const prog=i/320,base=19500-6500*prog,noise=(rng()+rng()+rng()-1.5)*2600,t=Math.max(7000,Math.round(base+noise+(rng()<.06?6000:0)));
+    sv.push({t,p:rng()<.02?-1:rng()<.04?2000:0,s:nxnScramble(3,22,rng),d:start+Math.floor(i/11)*864e5+(i%11)*240e3})}
+  const s={id:uid(),ev:'333',name:'サンプル（例）',solves:sv};DB.sessions.push(s);DB.ev='333';DB.cur['333']=s.id;save();fillEventSelects();renderMain();setTab('stats');toast('3×3 に「サンプル（例）」セッションを入れました')});
+let wipeArm=false;
+$('#wipe').addEventListener('click',()=>{if(!wipeArm){wipeArm=true;$('#wipe').textContent='本当に消す（もう一度押す）';setTimeout(()=>{wipeArm=false;$('#wipe').textContent='全データを消す'},4000);return}
+  // keep what is being wiped as the automatic backup, so a mistaken wipe can be undone
+  try{if(totalSolves())localStorage.setItem(SNAP,JSON.stringify({at:Date.now(),db:JSON.stringify(DB)}))}catch(e){}
+  const st=DB.settings,wca=DB.wca;DB=freshDB();DB.settings=st;DB.wca=wca;DB.meta.snapDay=dayKey(Date.now());save();fillEventSelects();curScr=newScr(eventById(DB.ev));renderMain();renderData();renderMove();wipeArm=false;$('#wipe').textContent='全データを消す';toast('全データを消しました（「自動バックアップから戻す」で戻せます）')});
+
+/* ================= keyboard ================= */
+const isField=t=>t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||$('#avgDlg').open||$('#pickDlg').open);
+const P1K=['ShiftLeft','KeyA'],P2K=['ShiftRight','KeyL'];
+document.addEventListener('keydown',e=>{if(isField(e.target))return;
+  if(TAB==='timer'||TAB==='online'){const t=TAB==='timer'?mainT:onT;if(e.code==='Space')e.preventDefault();if(e.repeat)return;
+    if(t.holding&&e.code!=='Space'){e.preventDefault();t.abortHold();return}
+    if(e.code==='Escape'){t.cancel();return}if(t.st==='run'){e.preventDefault();t.down();return}if(e.code==='Space')t.down()}
+  else if(TAB==='local'){if(e.repeat){if(e.code==='Space')e.preventDefault();return}
+    if(e.code==='Enter'){e.preventDefault();lbNext();return}if(e.code==='Escape'){if(!LT.map(t=>t.abortHold()).some(Boolean))LT.forEach(t=>t.cancel());return}
+    if(P1K.includes(e.code)){e.preventDefault();LT[0].down()}if(P2K.includes(e.code)){e.preventDefault();LT[1].down()}}});
+document.addEventListener('keyup',e=>{if(isField(e.target))return;
+  if(TAB==='timer'||TAB==='online'){const t=TAB==='timer'?mainT:onT;if(e.code==='Space')e.preventDefault();if(t.justStopped||e.code==='Space')t.up()}
+  else if(TAB==='local'){if(P1K.includes(e.code))LT[0].up();if(P2K.includes(e.code))LT[1].up()}});
+
+/* ================= boot ================= */
+lbNewRound();fillEventSelects();curScr=newScr(eventById(DB.ev));renderMain();askPersist();
+</script>
+
+</body></html>

@@ -1,0 +1,14 @@
+/* footer, support button and ad slots — uses the color tokens each page defines */
+#siteFooter{border-top:1px solid var(--line);padding-block:20px 32px;color:var(--muted);font-size:13px}
+#siteFooter .fin{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+#siteFooter .flinks{display:flex;flex-wrap:wrap;gap:6px 16px}
+#siteFooter a{color:var(--accent)}
+#siteFooter .fnote{margin:0;font-size:12px;line-height:1.6;max-width:72ch}
+.support{display:inline-block;background:var(--accent);color:var(--surface)!important;text-decoration:none;font-weight:700;padding:8px 16px;border-radius:999px}
+.langsw{font-size:13px;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.langsw:hover{border-color:var(--accent)}
+.langbar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;background:var(--accent-weak,#e1e9fb);color:var(--fg);font-size:13px;padding:6px 40px 6px 16px;position:relative}
+.langbar a{color:var(--accent);font-weight:700}
+.langbar button{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;font-size:18px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 6px}
+.adslot{margin-block:16px;min-height:0}
+.adlabel{font-size:11px;color:var(--muted);margin-bottom:4px}

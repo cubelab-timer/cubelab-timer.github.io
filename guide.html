@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>使い方｜CubeLab Timer</title>
+<meta name="description" content="CubeLab Timer の使い方。計測のしかた、インスペクション、ao5・ao12の見方と内訳、2人対戦、WCA記録との比較、csTimerからの記録の移行とバックアップ。">
+<link rel="alternate" hreflang="ja" href="https://cubelab-timer.github.io/guide.html">
+<link rel="alternate" hreflang="en" href="https://cubelab-timer.github.io/en/guide.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="content.css"><link rel="stylesheet" href="footer.css">
+<script src="config.js"></script><script src="site.js" defer></script>
+</head><body>
+<header class="top"><div class="wrap topin"><a class="brand" href="index.html">CubeLab<span>Timer</span></a><a class="cta" href="index.html">タイマーを開く</a></div></header>
+<main class="wrap">
+  <h1>CubeLab Timer の使い方</h1>
+  <p class="lead">登録なしで使える、スピードキューブ用の無料タイマーです。記録はお使いのブラウザの中だけに保存されます。</p>
+  <ol class="toc">
+    <li><a href="#start">計測のしかた</a></li><li><a href="#cancel">スタートの取り消し</a></li><li><a href="#insp">インスペクション</a></li>
+    <li><a href="#stats">ao5・ao12 と内訳</a></li><li><a href="#battle">2人対戦</a></li><li><a href="#wca">WCA記録との比較</a></li>
+    <li><a href="#move">記録の移行とバックアップ</a></li><li><a href="#faq">よくある質問</a></li>
+  </ol>
+
+  <h2 id="start">計測のしかた</h2>
+  <ol>
+    <li>上の「種目」で、解くパズルを選びます。画面上にスクランブル（崩し方）と、崩したあとの展開図が出ます。</li>
+    <li>スクランブルどおりにパズルを崩します。</li>
+    <li><kbd>スペース</kbd>キーを長押しします。数字が赤から<b>緑</b>に変わったら準備完了です。スマホは画面を長押しします。</li>
+    <li>離した瞬間にスタート。解き終わったら、どれかキーを押す（スマホは画面をタッチ）と止まります。</li>
+    <li>止めたあと、必要なら <b>+2</b>（2秒ペナルティ）や <b>DNF</b>（失格）を付けられます。</li>
+  </ol>
+  <p>長押しが必要な長さ（0.3秒・0.55秒・なし）は、タイマー画面の下で変えられます。</p>
+
+  <h2 id="cancel">スタートの取り消し</h2>
+  <p>長押ししている途中で「やっぱりやめたい」ときは、<kbd>Esc</kbd> かスペース以外のキーを押します。スマホは、指を押したまま枠の外へずらすと取り消せます。インスペクション中に取り消した場合は、カウントダウンがそのまま続きます。</p>
+
+  <h2 id="insp">インスペクション（観察時間）</h2>
+  <p>「インスペクション15秒」をオンにすると、大会と同じように、解き始める前に15秒の観察時間が付きます。スペースを1回押して離すとカウントダウンが始まり、15秒を過ぎると +2、17秒を過ぎると DNF が自動で付きます。</p>
+
+  <h2 id="stats">ao5・ao12 と内訳</h2>
+  <p><b>ao5</b> は直近5回のうち、最速と最遅を1回ずつ除いた3回の平均です。WCA の大会の「平均」と同じ計算です。<b>ao12</b> は12回から最速・最遅を1回ずつ除いた平均です。DNF は最も遅いタイムとして扱います。</p>
+  <p>タイマー画面や統計タブで、点線の下線が付いた平均の数字を押すと<b>内訳</b>が開きます。どの回が使われ、どの回が除かれたか（カッコ付き）、それぞれのスクランブルまで確かめられます。「テキストでコピー」で SNS にも貼れます。</p>
+  <p>統計タブでは、ao100 や ao1000 までの記録、成長グラフ、タイムの分布、「12回中10回が15秒未満」のような条件チェックも見られます。</p>
+
+  <h2 id="battle">2人対戦</h2>
+  <p>1台のパソコンで、2人が同じスクランブルを同時に解いて勝負できます。左側の人は <kbd>左Shift</kbd> か <kbd>A</kbd>、右側の人は <kbd>右Shift</kbd> か <kbd>L</kbd> で計測します。タブレットなら、それぞれの枠を長押しします。対戦成績は統計タブにたまっていきます。</p>
+
+  <h2 id="wca">WCA記録との比較</h2>
+  <p>「WCA記録」タブで WCA ID（例：2015TANA01）を入れて取得すると、大会での自己ベストと、このタイマーでの練習ベストを種目ごとに並べて、差を表示します。WCA ID がなくても、日本記録や世界記録との比較だけは見られます。データは WCA の公開API から取得しています。</p>
+
+  <h2 id="move">記録の移行とバックアップ</h2>
+  <p>タイマーの「記録の移行」タブに、やりたいこと別の手順があります。</p>
+  <ul>
+    <li><b>csTimer から移す</b>：csTimer の「エクスポート」で書き出したファイルを、「ファイルを読み込む」で選ぶだけです。</li>
+    <li><b>csTimer へ戻す</b>：「csTimer 形式で書き出す」を押して、csTimer の「インポート」で読み込みます。</li>
+    <li><b>機種変更</b>：「バックアップを書き出す」でファイルを作り、新しい端末で読み込みます。</li>
+  </ul>
+  <p>同じファイルを2回読み込んでも、記録が二重になることはありません。また、1日1回、前の日の状態をブラウザ内に自動で残しているので、うっかり消してしまっても戻せる場合があります。</p>
+
+  <h2 id="faq">よくある質問</h2>
+  <h3>お金はかかりますか？</h3>
+  <p>すべての機能を無料で使えます。運営費は広告と、応援してくださる方の支援でまかなっています。</p>
+  <h3>記録はどこに保存されますか？</h3>
+  <p>お使いのブラウザの中だけです。運営者のサーバーには送られません。そのため、ブラウザのデータを消すと記録も消えます。ときどきバックアップを書き出してください。</p>
+  <h3>スマホでも使えますか？</h3>
+  <p>使えます。ホーム画面に追加しておくと、アプリのようにすぐ開けます。</p>
+  <h3>WCA の公式ツールですか？</h3>
+  <p>いいえ。個人が運営している非公式のツールで、World Cube Association とは関係ありません。</p>
+</main>
+<footer id="siteFooter" class="wrap"></footer>
+</body></html>
