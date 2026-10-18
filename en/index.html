@@ -196,6 +196,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
 </header>
 
 <main class="wrap">
+  <div class="note" id="inappNote" hidden style="margin-bottom:12px"></div>
   <!-- TIMER -->
   <section class="tab" id="tab-timer">
     <div class="tgrid">
@@ -664,23 +665,54 @@ const SNAP='cubelab.snapshot',RESCUE='cubelab.rescue-';
 const META0=()=>({lastExport:0,exportedCount:0,snapDay:''});
 function freshDB(){return{v:1,ev:'333',sessions:[],cur:{},custom:[],battles:[],meta:META0(),settings:{inspect:false,hold:300,hide:false,nick:'',p1:'Player 1',p2:'Player 2',targets:{}}}}
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
-let DB;const RAW=lsGet(KEY);try{DB=JSON.parse(RAW||'null')}catch(e){DB=null}
-// unreadable data is set aside, never overwritten; a newer/older version number alone never resets records
-if(RAW&&(!DB||typeof DB!=='object'||!Array.isArray(DB.sessions))){try{localStorage.setItem(RESCUE+Date.now(),RAW)}catch(e){}DB=null}
-if(!DB)DB=freshDB();
-DB.v=DB.v||1;DB.meta=Object.assign(META0(),DB.meta||{});
-DB.settings=Object.assign(freshDB().settings,DB.settings||{});
-if(!DB.wca||typeof DB.wca!=='object')DB.wca={id:'',country:'Japan',person:null,rec:null,at:0};
-['sessions','custom','battles'].forEach(k=>{if(!Array.isArray(DB[k]))DB[k]=[]});DB.cur=DB.cur||{};
-let saveWarned=false;
-function save(){try{const d=dayKey(Date.now());
-    // once a day, keep the previous stored state as an automatic snapshot before overwriting it
-    if(DB.meta.snapDay!==d){const prev=lsGet(KEY);if(prev&&prev.includes('"solves":[{'))localStorage.setItem(SNAP,JSON.stringify({at:Date.now(),db:prev}));DB.meta.snapDay=d}
-    localStorage.setItem(KEY,JSON.stringify(DB))}
-  catch(e){if(!saveWarned){saveWarned=true;toast('Could not save your records. Export a backup from the Import/Backup tab now.')}}}
+// a newer/older version number alone never resets records; anything without a sessions list is not usable
+function normalizeDB(d){if(!d||typeof d!=='object'||!Array.isArray(d.sessions))return null;
+  d.v=d.v||1;d.meta=Object.assign(META0(),d.meta||{});d.settings=Object.assign(freshDB().settings,d.settings||{});
+  if(!d.wca||typeof d.wca!=='object')d.wca={id:'',country:'Japan',person:null,rec:null,at:0};
+  ['sessions','custom','battles'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});d.cur=d.cur||{};return d}
+// records are loaded asynchronously at boot; until then DB is an empty placeholder and save() does nothing
+let DB=normalizeDB(freshDB()),READY=false;
+
+/* Records live in IndexedDB (large quota). localStorage (about 5–10 MB) is only the fallback where IndexedDB
+   is unavailable; data saved there by older versions is moved to IndexedDB on first load. */
+const STORE={persisted:false,mode:'ls',snap:null};
+const IDB={db:null};
+function idbOpen(){return new Promise(res=>{try{const r=indexedDB.open('cubelab',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');
+  r.onsuccess=()=>{IDB.db=r.result;res(true)};r.onerror=r.onblocked=()=>res(false)}catch(e){res(false)}})}
+function idbReq(mode,fn){return new Promise((res,rej)=>{try{const t=IDB.db.transaction('kv',mode),q=fn(t.objectStore('kv'));
+  t.oncomplete=()=>res(q&&q.result);t.onerror=t.onabort=()=>rej(t.error||new Error('idb'))}catch(e){rej(e)}})}
+const getRaw=async k=>STORE.mode==='idb'?await idbReq('readonly',s=>s.get(k)):lsGet(k);
+const putRaw=(k,v)=>STORE.mode==='idb'?idbReq('readwrite',s=>s.put(v,k)):new Promise(res=>{localStorage.setItem(k,v);res()});
+async function loadStore(){
+  STORE.mode=window.indexedDB&&await idbOpen()?'idb':'ls';
+  let raw=null,fromLS=false;
+  if(STORE.mode==='idb'){try{raw=await getRaw(KEY)}catch(e){STORE.mode='ls'}}
+  if(raw==null){raw=lsGet(KEY);fromLS=raw!=null}
+  if(raw!=null){let d=null;try{d=normalizeDB(JSON.parse(raw))}catch(e){}
+    // unreadable data is set aside, never overwritten
+    if(d)DB=d;else try{await putRaw(RESCUE+Date.now(),raw)}catch(e){}}
+  try{STORE.snap=(await getRaw(SNAP))||lsGet(SNAP)}catch(e){}
+  READY=true;
+  if(fromLS&&STORE.mode==='idb'&&DB.sessions.length){
+    try{await putRaw(KEY,JSON.stringify(DB));if(STORE.snap)await putRaw(SNAP,STORE.snap);try{localStorage.removeItem(KEY);localStorage.removeItem(SNAP)}catch(e){}}catch(e){STORE.mode='ls'}}}
+let saveWarned=false,writing=false,dirty=false;
+// every change calls save(); writes are queued so the newest state always lands last
+function save(){if(!READY)return;dirty=true;if(!writing)flush()}
+async function flush(){writing=true;
+  while(dirty){dirty=false;const d=dayKey(Date.now());
+    // once a day, keep the previous stored state as an automatic snapshot; failing to keep it never blocks saving the records
+    if(DB.meta.snapDay!==d){DB.meta.snapDay=d;
+      try{const prev=await getRaw(KEY);if(prev&&prev.includes('"solves":[{')){const s=JSON.stringify({at:Date.now(),db:prev});
+        try{await putRaw(SNAP,s);STORE.snap=s}catch(e){try{localStorage.removeItem(SNAP)}catch(x){}STORE.snap=null}}}catch(e){}}
+    try{await putRaw(KEY,JSON.stringify(DB));saveWarned=false}
+    catch(e){
+      // out of room in localStorage: give up the snapshot so the records themselves fit
+      if(STORE.mode==='ls'&&STORE.snap!==null){try{localStorage.removeItem(SNAP)}catch(x){}STORE.snap=null;dirty=true;continue}
+      if(!saveWarned){saveWarned=true;toast('Could not save your records. Export a backup from the Import/Backup tab now.')}}}
+  writing=false}
+addEventListener('pagehide',()=>{if(dirty&&!writing)flush()});
 const totalSolves=()=>DB.sessions.reduce((a,s)=>a+s.solves.length,0);
 function askPersist(){try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||totalSolves()===0?p:navigator.storage.persist()).then(p=>{STORE.persisted=!!p}).catch(()=>{})}catch(e){}}
-const STORE={persisted:false};
 function sessionsOf(ev){return DB.sessions.filter(s=>s.ev===ev)}
 function curSession(){const ev=DB.ev;let s=DB.sessions.find(x=>x.id===DB.cur[ev]&&x.ev===ev)||sessionsOf(ev)[0];
   if(!s){s={id:uid(),ev,name:'Session 1',solves:[]};DB.sessions.push(s);save()}DB.cur[ev]=s.id;return s}
@@ -1042,7 +1074,7 @@ function renderBk(){const n=totalSolves(),fresh=n-DB.meta.exportedCount,days=DB.
   const due=fresh>=50||(fresh>0&&days>=14)||(!DB.meta.lastExport&&n>=30);el.hidden=!due;
   if(due)el.innerHTML=`${DB.meta.lastExport?'New solves since your last backup:':'You have not exported a backup yet. Unsaved solves:'} <b class="num">${fresh}</b>${DB.meta.lastExport?'':''}<br><button id="bkNow" class="pri" style="margin-top:6px">Export now</button> <button id="bkHow" class="ghost" style="margin-top:6px">Learn more</button>`}
 $('#bkNote').addEventListener('click',e=>{if(e.target.id==='bkNow')exportBackup();if(e.target.id==='bkHow')setTab('move')});
-function readSnap(){try{const o=JSON.parse(lsGet(SNAP)||'null');const db=o&&JSON.parse(o.db);return db&&Array.isArray(db.sessions)?{at:o.at,db}:null}catch(e){return null}}
+function readSnap(){try{const o=JSON.parse(STORE.snap||'null');const db=o&&JSON.parse(o.db);return db&&Array.isArray(db.sessions)?{at:o.at,db}:null}catch(e){return null}}
 function renderMove(){const n=totalSolves(),sn=readSnap();
   $('#mvTiles').innerHTML=`<div class="tile"><span>Saved solves</span><b>${n}</b></div><div class="tile"><span>Sessions</span><b>${DB.sessions.filter(s=>s.solves.length).length}</b></div>`+
     `<div class="tile"><span>Last backup</span><b style="font-size:15px">${DB.meta.lastExport?esc(new Date(DB.meta.lastExport).toLocaleDateString('en-US')):'never'}</b></div>`+
@@ -1126,7 +1158,7 @@ $('#sample').addEventListener('click',()=>{const rng=mulberry32(42),sv=[],start=
 let wipeArm=false;
 $('#wipe').addEventListener('click',()=>{if(!wipeArm){wipeArm=true;$('#wipe').textContent='Really delete? (press again)';setTimeout(()=>{wipeArm=false;$('#wipe').textContent='Delete all data'},4000);return}
   // keep what is being wiped as the automatic backup, so a mistaken wipe can be undone
-  try{if(totalSolves())localStorage.setItem(SNAP,JSON.stringify({at:Date.now(),db:JSON.stringify(DB)}))}catch(e){}
+  if(totalSolves()){const s=JSON.stringify({at:Date.now(),db:JSON.stringify(DB)});STORE.snap=s;putRaw(SNAP,s).catch(()=>{})}
   const st=DB.settings,wca=DB.wca;DB=freshDB();DB.settings=st;DB.wca=wca;DB.meta.snapDay=dayKey(Date.now());save();fillEventSelects();curScr=newScr(eventById(DB.ev));renderMain();renderData();renderMove();wipeArm=false;$('#wipe').textContent='Delete all data';toast('All data deleted (use “Restore from automatic backup” to undo)')});
 
 /* ================= keyboard ================= */
@@ -1144,7 +1176,10 @@ document.addEventListener('keyup',e=>{if(isField(e.target))return;
   else if(TAB==='local'){if(P1K.includes(e.code))LT[0].up();if(P2K.includes(e.code))LT[1].up()}});
 
 /* ================= boot ================= */
-lbNewRound();fillEventSelects();curScr=newScr(eventById(DB.ev));renderMain();askPersist();
+// in-app browsers (LINE etc.) can lose their storage: suggest opening the page in the regular browser
+if(window===window.top&&/\b(Line|FBAN|FBAV|Instagram)\//i.test(navigator.userAgent)){const n=$('#inappNote'),u=new URL(location.href);u.searchParams.set('openExternalBrowser','1');
+  n.innerHTML=`You are in an in-app browser, where records can be lost. Please<a href="${esc(u.href)}" target="_blank" rel="noopener">open this page in your regular browser</a>.`;n.hidden=false}
+loadStore().then(()=>{LB.ev=DB.ev;lbNewRound();fillEventSelects();curScr=newScr(eventById(DB.ev));renderMain();if(TAB!=='timer')setTab(TAB);askPersist()});
 </script>
 
 </body></html>
