@@ -675,7 +675,9 @@ let DB=normalizeDB(freshDB()),READY=false;
 
 /* Records live in IndexedDB (large quota). localStorage (about 5–10 MB) is only the fallback where IndexedDB
    is unavailable; data saved there by older versions is moved to IndexedDB on first load. */
-const STORE={persisted:false,mode:'ls',snap:null};
+const STORE={persisted:false,mode:'ls',snap:null,rev:0};
+// REV counts writes; another tab (or an old tab left open) that saved since we last read shows up as a different number
+const REV='cubelab.rev',BC=(()=>{try{return new BroadcastChannel('cubelab')}catch(e){return null}})();
 const IDB={db:null};
 function idbOpen(){return new Promise(res=>{try{const r=indexedDB.open('cubelab',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');
   r.onsuccess=()=>{IDB.db=r.result;res(true)};r.onerror=r.onblocked=()=>res(false)}catch(e){res(false)}})}
@@ -692,6 +694,7 @@ async function loadStore(){
     // unreadable data is set aside, never overwritten
     if(d)DB=d;else try{await putRaw(RESCUE+Date.now(),raw)}catch(e){}}
   try{STORE.snap=(await getRaw(SNAP))||lsGet(SNAP)}catch(e){}
+  try{STORE.rev=+(await getRaw(REV))||0}catch(e){}
   READY=true;
   if(fromLS&&STORE.mode==='idb'&&DB.sessions.length){
     try{await putRaw(KEY,JSON.stringify(DB));if(STORE.snap)await putRaw(SNAP,STORE.snap);try{localStorage.removeItem(KEY);localStorage.removeItem(SNAP)}catch(e){}}catch(e){STORE.mode='ls'}}}
@@ -704,13 +707,24 @@ async function flush(){writing=true;
     if(DB.meta.snapDay!==d){DB.meta.snapDay=d;
       try{const prev=await getRaw(KEY);if(prev&&prev.includes('"solves":[{')){const s=JSON.stringify({at:Date.now(),db:prev});
         try{await putRaw(SNAP,s);STORE.snap=s}catch(e){try{localStorage.removeItem(SNAP)}catch(x){}STORE.snap=null}}}catch(e){}}
-    try{await putRaw(KEY,JSON.stringify(DB));saveWarned=false}
+    try{await syncOthers();const r=STORE.rev+1;await putRaw(KEY,JSON.stringify(DB));await putRaw(REV,String(r));STORE.rev=r;saveWarned=false;if(BC)try{BC.postMessage(r)}catch(x){}}
     catch(e){
       // out of room in localStorage: give up the snapshot so the records themselves fit
       if(STORE.mode==='ls'&&STORE.snap!==null){try{localStorage.removeItem(SNAP)}catch(x){}STORE.snap=null;dirty=true;continue}
       if(!saveWarned){saveWarned=true;toast('記録を保存できませんでした。「記録の移行」タブから書き出してください')}}}
   writing=false}
 addEventListener('pagehide',()=>{if(dirty&&!writing)flush()});
+// before writing, fold in records another tab saved meanwhile instead of overwriting them with this tab's older copy
+async function syncOthers(){let r;try{r=+(await getRaw(REV))||0}catch(e){return}if(r===STORE.rev)return;
+  try{const d=normalizeDB(JSON.parse(await getRaw(KEY)));if(d)mergeBackup(d)}catch(e){}STORE.rev=r}
+// a tab coming back into view, or told by another tab that it saved, picks up the newest records
+async function reloadIfChanged(){if(!READY||writing||dirty||document.body.classList.contains('running'))return;
+  let r;try{r=+(await getRaw(REV))||0}catch(e){return}if(r===STORE.rev)return;
+  let d=null;try{d=normalizeDB(JSON.parse(await getRaw(KEY)))}catch(e){}if(!d||writing||dirty||document.body.classList.contains('running'))return;
+  const ev=DB.ev;DB=d;STORE.rev=r;fillEventSelects();if(DB.ev!==ev)curScr=newScr(eventById(DB.ev));renderMain();if(TAB!=='timer')setTab(TAB)}
+if(BC)BC.onmessage=()=>reloadIfChanged();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)reloadIfChanged()});
+addEventListener('pageshow',e=>{if(e.persisted)reloadIfChanged()});
 const totalSolves=()=>DB.sessions.reduce((a,s)=>a+s.solves.length,0);
 function askPersist(){try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||totalSolves()===0?p:navigator.storage.persist()).then(p=>{STORE.persisted=!!p}).catch(()=>{})}catch(e){}}
 function sessionsOf(ev){return DB.sessions.filter(s=>s.ev===ev)}
@@ -1089,6 +1103,11 @@ const sessSig=sv=>sv.length+':'+(sv[0]?sv[0].t+'@'+Math.floor(sv[0].d/1000):'')+
 function addSess(s){if(!s.solves.length)return 0;const ex=DB.sessions.find(x=>x.id===s.id);
   if(ex){const have=new Set(ex.solves.map(v=>v.d+':'+v.t)),add=s.solves.filter(v=>!have.has(v.d+':'+v.t));if(!add.length)return 0;ex.solves=ex.solves.concat(add).sort((a,b)=>a.d-b.d);return add.length}
   const g=sessSig(s.solves);if(DB.sessions.some(x=>sessSig(x.solves)===g))return 0;DB.sessions.push(s);return s.solves.length}
+// csTimer imports join the event's current session, so stats and averages run on one continuous record;
+// solves already present in any session of that event (an earlier import, or the same file twice) are skipped
+function mergeInto(ev,sv){const have=new Set();DB.sessions.forEach(x=>{if(x.ev===ev)x.solves.forEach(v=>have.add(v.d+':'+v.t))});
+  const add=sv.filter(v=>!have.has(v.d+':'+v.t));if(!add.length)return 0;
+  const prev=DB.ev;DB.ev=ev;const s=curSession();DB.ev=prev;s.solves=s.solves.concat(add).sort((a,b)=>a.d-b.d);return add.length}
 const cleanSolves=a=>(a||[]).filter(v=>v&&typeof v.t==='number').map(v=>({t:v.t,p:v.p===-1||v.p===2000?v.p:0,s:String(v.s||''),d:+v.d||Date.now()}));
 function mergeBackup(o){let ns=0,nv=0,sk=0;(o.custom||[]).forEach(c=>{const d=cleanDef(c);if(d&&!DB.custom.some(x=>x.id===d.id))DB.custom.push(d)});
   (o.sessions||[]).forEach(s=>{if(!s||!Array.isArray(s.solves))return;const sv=cleanSolves(s.solves);
@@ -1122,8 +1141,8 @@ function importText(text,msg){let o;
     if(!list.length){msg.textContent='このファイルには記録の入ったセッションがありませんでした。';return}
     msg.textContent='';openPick(list,msg);return}
   msg.textContent='このファイルの形式には対応していません（CubeLab のバックアップか、csTimer で書き出したファイルを選んでください）。'}
-function finishImport(msg,ns,nv,sk){save();askPersist();fillEventSelects();renderMain();renderData();renderMove();
-  msg.textContent=(ns?`✓ ${ns}セッション・${nv}回分を読み込みました。タイマー画面右上のセッション欄から選べます。`:'新しく追加する記録はありませんでした。')+(sk?`（すでに入っている ${sk}セッションは飛ばしました）`:'');
+function finishImport(msg,ns,nv,sk,merged){save();askPersist();fillEventSelects();renderMain();renderData();renderMove();
+  msg.textContent=(ns?(merged?`✓ ${nv}回分を読み込み、各種目の今のセッションにまとめました。統計もつながって計算されます。`:`✓ ${ns}セッション・${nv}回分を読み込みました。タイマー画面右上のセッション欄から選べます。`):'新しく追加する記録はありませんでした。')+(sk?(merged?`（${sk}セッションはすでに読み込み済みでした）`:`（すでに入っている ${sk}セッションは飛ばしました）`):'');
   if(ns)toast(`${nv}回分の記録を読み込みました`)}
 
 /* csTimer file -> list of sessions the viewer picks from (unwanted timers can be left out, events corrected) */
@@ -1149,8 +1168,8 @@ $('#pickClose').addEventListener('click',()=>{$('#pickDlg').close();if(PICK)PICK
 $('#pickGo').addEventListener('click',()=>{let ns=0,nv=0,sk=0;
   $$('#pickList input:checked').forEach(b=>{const i=+b.dataset.i,x=PICK.list[i];let ev=$(`#pickList select[data-ev="${i}"]`).value;
     if(ev==='__new'){let c=DB.custom.find(c=>c.name==='csTimer '+x.st);if(!c){c=cleanDef({id:'c'+uid(),name:'csTimer '+x.st,base:'none'});DB.custom.push(c)}ev=c.id}
-    const added=addSess({id:uid(),ev,name:'csTimer '+x.name,solves:x.sv});if(added){ns++;nv+=added}else sk++});
-  $('#pickDlg').close();finishImport(PICK.msg,ns,nv,sk);PICK=null});
+    const added=mergeInto(ev,x.sv);if(added){ns++;nv+=added}else sk++});
+  $('#pickDlg').close();finishImport(PICK.msg,ns,nv,sk,true);PICK=null});
 $('#sample').addEventListener('click',()=>{const rng=mulberry32(42),sv=[],start=Date.now()-30*864e5;
   for(let i=0;i<320;i++){const prog=i/320,base=19500-6500*prog,noise=(rng()+rng()+rng()-1.5)*2600,t=Math.max(7000,Math.round(base+noise+(rng()<.06?6000:0)));
     sv.push({t,p:rng()<.02?-1:rng()<.04?2000:0,s:nxnScramble(3,22,rng),d:start+Math.floor(i/11)*864e5+(i%11)*240e3})}
