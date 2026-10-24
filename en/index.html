@@ -202,6 +202,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
     <div class="tgrid">
       <div class="card">
         <div class="scrbar dim"><div id="scr" class="scr"></div><button id="scrNext" title="Get another scramble">Next scramble</button></div>
+        <div class="small muted dim" id="scrLab"></div>
         <div id="tarea" class="tarea"><div id="tdisp" class="tdisp">0.00</div><div class="hint dim" id="thint">Hold Space → release when it turns green to start / press any key to stop (on phones, hold the screen)<br>Cancel before the start: while holding, press Esc or any other key (on phones, slide your finger off the pad)</div></div>
         <div class="lastbar dim" id="lastBar">
           <button data-pen="0">OK</button><button data-pen="2000">+2</button><button data-pen="-1">DNF</button><button data-pen="del">Delete</button>
@@ -247,7 +248,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
     </div>
     <div class="card">
       <div class="row" style="justify-content:space-between"><h3 id="lbRound" style="margin:0">Round 1</h3><div class="score" id="lbScore">0 - 0</div></div>
-      <div class="scr" id="lbScr" style="margin:8px 0"></div>
+      <div class="scr" id="lbScr" style="margin:8px 0 2px"></div><div class="small muted" id="lbLab"></div>
       <div class="diag" id="lbDiag"></div>
     </div>
     <div class="duo">
@@ -459,6 +460,7 @@ function makeNxN(N){
   const idx=slotIndex(slots),cache={};
   const perm=(f,d)=>{const k=f+d;if(!cache[k]){const n=NORM[f],th=d>=N?-1e9:N+1-2*d;cache[k]=makePerm(slots,idx,s=>dot(s.q,n)>=th,ROT90[f])}return cache[k]};
   return{
+    slots,perm,
     solved:()=>slots.map(s=>s.f),
     apply(st,scr){for(const tok of scr.split(/\s+/)){const m=tok.match(/^(\d*)([URFDLBxyz])(w?)(2'|2|')?$/);if(!m)continue;let f=m[2],d;if('xyz'.includes(f)){d=N;f={x:'R',y:'U',z:'F'}[f]}else d=m[3]?(m[1]?+m[1]:2):1;d=Math.min(d,N);const t=m[4]==="'"?3:m[4]?2:1;st=applyPerm(st,perm(f,d),t)}return st},
     svg(st){const cs=Math.max(4,Math.min(22,Math.floor(80/N))),g=5,fw=N*cs;let b='';slots.forEach((s,i)=>{const P=NETPOS[FACES6[s.f]],x=P[0]*(fw+g)+s.c*cs+1,y=P[1]*(fw+g)+s.r*cs+1;b+=`<rect x="${x}" y="${y}" width="${cs}" height="${cs}" fill="${CUBE_COL[st[i]]}" stroke="var(--sticker-line)" stroke-width="${N>7?.5:1}"/>`});return svgWrap(4*fw+3*g+2,3*fw+2*g+2,b)}
@@ -471,6 +473,7 @@ function makeSkewb(){
   const idx=slotIndex(slots),cache={},AX={R:[1,-1,-1],U:[-1,1,-1],L:[-1,-1,1],B:[-1,-1,-1]};
   const perm=m=>{if(!cache[m]){const v=AX[m];cache[m]=makePerm(slots,idx,s=>dot(s.q,v)>0,q=>{const p=[q[0]*v[0],q[1]*v[1],q[2]*v[2]];return[p[1]*v[0],p[2]*v[1],p[0]*v[2]]})}return cache[m]};
   return{
+    slots,perm,
     solved:()=>slots.map(s=>s.f),
     apply(st,scr){for(const tok of scr.split(/\s+/)){const m=tok.match(/^([RULB])('?)$/);if(m)st=applyPerm(st,perm(m[1]),m[2]?2:1)}return st},
     svg(st){const S=46,g=5;let b='';slots.forEach((s,i)=>{const P=NETPOS[FACES6[s.f]],x=P[0]*(S+g)+1,y=P[1]*(S+g)+1,col=CUBE_COL[st[i]];
@@ -491,6 +494,7 @@ function makePyra(){
   const idx=slotIndex(slots),cache={};
   const perm=m=>{if(!cache[m]){const X=m.toUpperCase(),thr=m===X?.1:.55;cache[m]=makePerm(slots,idx,s=>dot(s.q,V[X])>thr,q=>rodr(q,V[X],-2*Math.PI/3))}return cache[m]};
   return{
+    slots,perm,V,
     solved:()=>slots.map(s=>s.f),
     apply(st,scr){for(const tok of scr.split(/\s+/)){const m=tok.match(/^([ULRBulrb])('?)$/);if(m)st=applyPerm(st,perm(m[1]),m[2]?2:1)}return st},
     svg(st){const S=120,M=3;let b='';slots.forEach((s,i)=>{b+=poly(s.p2.map(p=>[p[0]*S+M,p[1]*S+M]),COL[st[i]])});return svgWrap(2*S+2*M,2*h*S+2*M,b)}
@@ -628,23 +632,90 @@ function clockScramble(rng){const a=()=>{const v=ri(rng,12)-5;return Math.abs(v)
 function ctoScramble(rng){const m=[nxnScramble(3,25,rng)];for(const t of'urfdlb'){const k=ri(rng,4);if(k)m.push(t+['','','2',"'"][k])}return m.join(' ')}
 function bldScramble(rng){let s=nxnScramble(3,22,rng);const a=['','Rw',"Rw'",'Rw2'][ri(rng,4)],b=['','Uw',"Uw'",'Uw2'][ri(rng,4)];return[s,a,b].filter(Boolean).join(' ')}
 
-/* ================= events (add new built-in events here: one line each) ================= */
+/* ================= random-state scramblers (WCA style: random state -> solve -> invert) ================= */
+const pApply=(s,p)=>{const n=new Array(s.length);for(let i=0;i<p.length;i++)n[p[i]]=s[i];return n};
+function powPerm(p,k){let r=[...Array(p.length).keys()];for(let i=0;i<k;i++)r=pApply(r,p);const q=new Int32Array(p.length);r.forEach((id,j)=>q[id]=j);return q}
+const invAlg=path=>path.slice().reverse().map(m=>m.endsWith("'")?m.slice(0,-1):m.endsWith('2')?m:m+"'");
+// IDA* over sticker states; pruning tables come from BFS over label projections (e.g. orientation only / permutation only)
+function makeRS({n,moves,labels,goal}){
+  const id0=[...Array(n).keys()];
+  const tabs=labels.map(f=>{const L=id0.map(f),m=new Map([[L.join(''),0]]);let fr=[L],d=0;
+    while(fr.length){d++;const nx=[];for(const s of fr)for(const mv of moves){const t=pApply(s,mv.p),k=t.join('');if(!m.has(k)){m.set(k,d);nx.push(t)}}fr=nx}return{f,m}});
+  const h=s=>{let b=0;for(const T of tabs){const v=T.m.get(s.map(T.f).join(''));if(v>b)b=v}return b};
+  const dfs=(s,d,ax,path)=>{if(d===0)return goal(s);if(h(s)>d)return false;
+    for(const mv of moves){if(mv.ax===ax)continue;path.push(mv.name);if(dfs(pApply(s,mv.p),d-1,mv.ax,path))return true;path.pop()}return false};
+  return{search(s,maxD){for(let d=h(s);d<=maxD;d++){const path=[];if(dfs(s,d,null,path))return path}return null}}}
+const CH='abcdefghijklmnopqrstuvwxyz0123456789';
+const RS={};
+function rsPuzzle(kind){if(RS[kind])return RS[kind];let o;
+  const mk=(perm,faces,ks,names)=>{const mv=[];for(const f of faces)ks.forEach((k,i)=>mv.push({name:f+names[i],ax:f,p:powPerm(perm(f),k)}));return mv};
+  if(kind==='222'){const P=getPuzzle('nxn:2'),sl=P.slots,col=sl.map(s=>s.f),cub=sl.map(s=>qkey(sub(s.q,NORM[FACES6[s.f]]))),ids=[...new Set(cub)];
+    const moves=mk(f=>P.perm(f,1),'RUF',[1,2,3],['','2',"'"]);
+    o={col,moves,min:4,rs:makeRS({n:sl.length,moves,labels:[id=>(col[id]===0||col[id]===3)?'1':'0',id=>CH[ids.indexOf(cub[id])]],goal:s=>s.every((id,i)=>col[id]===col[i])})}}
+  else if(kind==='skewb'){const P=getPuzzle('skewb'),sl=P.slots,col=sl.map(s=>s.f);
+    const moves=mk(f=>P.perm(f),'RULB',[1,2],['',"'"]);
+    o={col,moves,min:7,rs:makeRS({n:sl.length,moves,labels:[id=>sl[id].k?'-':CH[col[id]],id=>sl[id].k?CH[col[id]]:'-'],goal:s=>s.every((id,i)=>col[id]===col[i])})}}
+  else{const P=getPuzzle('pyra'),sl=P.slots,col=sl.map(s=>s.f),V=Object.values(P.V);
+    const type=sl.map(s=>{const mx=Math.max(...V.map(v=>dot(s.q,v)));return mx>.55?'t':mx>.33?'c':'e'});
+    const moves=mk(f=>P.perm(f),'ULRB',[1,2],['',"'"]);
+    o={col,moves,min:6,tips:true,rs:makeRS({n:sl.length,moves,labels:[id=>type[id]==='c'?CH[col[id]]:'-',id=>type[id]==='e'?CH[col[id]]:'-'],goal:s=>s.every((id,i)=>type[i]==='t'||col[id]===col[i])})}}
+  return RS[kind]=o}
+// random state = long random walk from solved (far past mixing), solved optimally, inverted; WCA minimum distances are enforced
+function rsScramble(kind,rng){const o=rsPuzzle(kind);
+  for(let tries=0;tries<30;tries++){let s=[...Array(o.col.length).keys()];for(let i=0;i<600;i++)s=pApply(s,o.moves[ri(rng,o.moves.length)].p);
+    const path=o.rs.search(s,14);if(!path||path.length<o.min)continue;const out=invAlg(path);
+    if(o.tips)for(const t of'ulrb'){const k=ri(rng,3);if(k)out.push(t+(k===1?'':"'"))}
+    return out.join(' ')}
+  return''}
+
+/* 3x3: Kociemba two-phase solver (cubejs) in a background worker; main-thread fallback */
+const CJ=['https://cdn.jsdelivr.net/npm/cubejs@1.3.2/lib/cube.js','https://cdn.jsdelivr.net/npm/cubejs@1.3.2/lib/solve.js'];
+const C3CODE=`function m32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function c3one(seed){var R0=Math.random;Math.random=m32(seed);try{var p=Cube.random().solve().trim().split(/\\s+/).filter(Boolean);return p.reverse().map(function(m){return m.slice(-1)==="'"?m.slice(0,-1):m.slice(-1)==='2'?m:m+"'"}).join(' ')}finally{Math.random=R0}}`;
+const C3={st:'idle',w:null,pend:new Map(),queue:[],seq:0};
+function c3one(seed){const R0=Math.random;Math.random=mulberry32(seed);try{return invAlg(window.Cube.random().solve().trim().split(/\s+/).filter(Boolean)).join(' ')}finally{Math.random=R0}}
+function c3flush(){const take=()=>C3.queue.splice(0);
+  if(C3.st==='ready')take().forEach(q=>C3.w.postMessage(q));
+  else if(C3.st==='ready-main'||C3.st==='fail')take().forEach(q=>{const r=C3.pend.get(q.id);C3.pend.delete(q.id);let s=null;if(C3.st==='ready-main'){try{s=c3one(q.seed)}catch(e){}}r(s)})}
+function c3main(){if(C3.st==='loading-main'||C3.st==='ready-main'||C3.st==='fail')return;C3.st='loading-main';
+  CJ.reduce((p,u)=>p.then(()=>new Promise((ok,ng)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=ng;document.head.appendChild(s)})),Promise.resolve())
+    .then(()=>{toast('Preparing official 3×3 scrambles (may pause for a few seconds)');setTimeout(()=>{try{window.Cube.initSolver();C3.st='ready-main'}catch(e){C3.st='fail'}c3flush()},60)})
+    .catch(()=>{C3.st='fail';c3flush()})}
+function c3init(){if(C3.st!=='idle')return;C3.st='loading';
+  const fb=()=>{if(C3.st==='loading'){C3.st='idle-main';c3main()}};
+  try{const src=`importScripts(${CJ.map(u=>JSON.stringify(u)).join(',')});${C3CODE};Cube.initSolver();postMessage({ready:1});onmessage=function(e){var s=null;try{s=c3one(e.data.seed)}catch(x){}postMessage({id:e.data.id,s:s})}`;
+    const w=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));
+    const to=setTimeout(()=>{w.terminate();fb()},45000);
+    w.onmessage=e=>{if(e.data.ready){clearTimeout(to);C3.st='ready';C3.w=w;c3flush()}else{const r=C3.pend.get(e.data.id);if(r){C3.pend.delete(e.data.id);r(e.data.s)}}};
+    w.onerror=e=>{if(e&&e.preventDefault)e.preventDefault();clearTimeout(to);w.terminate();fb()}}
+  catch(e){fb()}}
+function c3scr(seed){return new Promise(res=>{const id=++C3.seq;C3.pend.set(id,res);C3.queue.push({id,seed});c3init();c3flush()})}
+const orientBLD=(s,rng)=>[s,['','Rw',"Rw'",'Rw2'][ri(rng,4)],['','Uw',"Uw'",'Uw2'][ri(rng,4)]].filter(Boolean).join(' ');
+
+/* ================= events (add new built-in events here: one line each) =================
+   wca: 'state' = WCA random-state, 'move' = WCA's official random-move format, 'no' = not WCA-official */
 const BUILTIN=[
-  {id:'222',name:'2×2',puz:'nxn:2',scr:r=>nxnScramble(2,11,r)},
-  {id:'333',name:'3×3',puz:'nxn:3',scr:r=>nxnScramble(3,22,r)},
-  {id:'444',name:'4×4',puz:'nxn:4',scr:r=>nxnScramble(4,40,r)},
-  {id:'555',name:'5×5',puz:'nxn:5',scr:r=>nxnScramble(5,60,r)},
-  {id:'666',name:'6×6',puz:'nxn:6',scr:r=>nxnScramble(6,80,r)},
-  {id:'777',name:'7×7',puz:'nxn:7',scr:r=>nxnScramble(7,100,r)},
-  {id:'333oh',name:'3×3 One-Handed',puz:'nxn:3',scr:r=>nxnScramble(3,22,r)},
-  {id:'333bf',name:'3×3 Blindfolded',puz:'nxn:3',scr:bldScramble},
-  {id:'pyra',name:'Pyraminx',puz:'pyra',scr:pyraScramble},
-  {id:'skewb',name:'Skewb',puz:'skewb',scr:skewbScramble},
-  {id:'mega',name:'Megaminx',puz:'mega',scr:megaScramble},
-  {id:'sq1',name:'Square-1',puz:'sq1',scr:sq1Scramble},
-  {id:'clock',name:'Clock',puz:'clock',scr:clockScramble},
-  {id:'cto',name:'CTO (Corner-Turning Octahedron)',puz:'cto',scr:ctoScramble},
+  {id:'222',name:'2×2',puz:'nxn:2',wca:'state',scr:r=>rsScramble('222',r)},
+  {id:'333',name:'3×3',puz:'nxn:3',wca:'state',c3:s=>s},
+  {id:'444',name:'4×4',puz:'nxn:4',wca:'no',scr:r=>nxnScramble(4,40,r)},
+  {id:'555',name:'5×5',puz:'nxn:5',wca:'move',scr:r=>nxnScramble(5,60,r)},
+  {id:'666',name:'6×6',puz:'nxn:6',wca:'move',scr:r=>nxnScramble(6,80,r)},
+  {id:'777',name:'7×7',puz:'nxn:7',wca:'move',scr:r=>nxnScramble(7,100,r)},
+  {id:'333oh',name:'3×3 One-Handed',puz:'nxn:3',wca:'state',c3:s=>s},
+  {id:'333bf',name:'3×3 Blindfolded',puz:'nxn:3',wca:'state',c3:orientBLD},
+  {id:'pyra',name:'Pyraminx',puz:'pyra',wca:'state',scr:r=>rsScramble('pyra',r)},
+  {id:'skewb',name:'Skewb',puz:'skewb',wca:'state',scr:r=>rsScramble('skewb',r)},
+  {id:'mega',name:'Megaminx',puz:'mega',wca:'move',scr:megaScramble},
+  {id:'sq1',name:'Square-1',puz:'sq1',wca:'no',scr:sq1Scramble},
+  {id:'clock',name:'Clock',puz:'clock',wca:'state',scr:clockScramble},
+  {id:'cto',name:'CTO (Corner-Turning Octahedron)',puz:'cto',wca:'',scr:ctoScramble},
 ];
+const rand32=()=>Math.floor(Math.random()*4294967296);
+async function makeScr(ev,seed){const rng=mulberry32(seed>>>0);
+  if(ev.c3){const s=await c3scr(seed>>>0);if(s)return{s:ev.c3(s,rng),lab:ev.custom?'':'state'};return{s:nxnScramble(3,22,rng),lab:'fallback'}}
+  return{s:ev.scr(rng),lab:ev.custom?'':ev.wca}}
+const LABELS={state:'WCA style (random state)',move:'WCA style (random moves of the official length)',no:'Unofficial (random moves; the official method for this event is not supported yet)',fallback:'Temporary scramble (official 3×3 scrambles could not be prepared)'};
+const scrText=(s,pend)=>s||(pend?'Generating scramble…':'(no scramble for this event)');
 const BMAP=Object.fromEntries(BUILTIN.map(e=>[e.id,e]));
 function cleanDef(d){if(!d||typeof d!=='object')return null;if(typeof d.id==='string'&&BMAP[d.id]&&!d.base)return{id:d.id};
   const base=String(d.base||'');if(base!=='nxn'&&base!=='none'&&!BMAP[base])return null;
@@ -652,11 +723,10 @@ function cleanDef(d){if(!d||typeof d!=='object')return null;if(typeof d.id==='st
 function resolveEvent(d){d=cleanDef(d);if(!d)return BMAP['333'];if(!d.base)return BMAP[d.id];
   if(d.base==='nxn')return{id:d.id,name:d.name,custom:d,puz:'nxn:'+d.n,scr:r=>nxnScramble(d.n,d.len,r)};
   if(d.base==='none')return{id:d.id,name:d.name,custom:d,puz:null,scr:()=>''};
-  const b=BMAP[d.base];return{id:d.id,name:d.name,custom:d,puz:b.puz,scr:b.scr}}
+  const b=BMAP[d.base];return{id:d.id,name:d.name,custom:d,puz:b.puz,scr:b.scr,c3:b.c3}}
 const eventById=id=>BMAP[id]||resolveEvent(DB.custom.find(c=>c.id===id))||BMAP['333'];
 const defOf=id=>BMAP[id]?{id}:cleanDef(DB.custom.find(c=>c.id===id));
 function diagram(ev,scr){if(!ev.puz)return'';try{const P=getPuzzle(ev.puz);return P.svg(P.apply(P.solved(),scr))}catch(e){return''}}
-const newScr=ev=>ev.scr(Math.random);
 
 /* ================= storage ================= */
 const KEY='cubelab.v1';
@@ -721,7 +791,7 @@ async function syncOthers(){let r;try{r=+(await getRaw(REV))||0}catch(e){return}
 async function reloadIfChanged(){if(!READY||writing||dirty||document.body.classList.contains('running'))return;
   let r;try{r=+(await getRaw(REV))||0}catch(e){return}if(r===STORE.rev)return;
   let d=null;try{d=normalizeDB(JSON.parse(await getRaw(KEY)))}catch(e){}if(!d||writing||dirty||document.body.classList.contains('running'))return;
-  const ev=DB.ev;DB=d;STORE.rev=r;fillEventSelects();if(DB.ev!==ev)curScr=newScr(eventById(DB.ev));renderMain();if(TAB!=='timer')setTab(TAB)}
+  const ev=DB.ev;DB=d;STORE.rev=r;fillEventSelects();if(DB.ev!==ev)nextMain();renderMain();if(TAB!=='timer')setTab(TAB)}
 if(BC)BC.onmessage=()=>reloadIfChanged();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)reloadIfChanged()});
 addEventListener('pageshow',e=>{if(e.persisted)reloadIfChanged()});
@@ -807,24 +877,25 @@ function eventOptions(sel){const cu=DB.custom.map(c=>`<option value="${esc(c.id)
   return BUILTIN.map(e=>`<option value="${e.id}"${e.id===sel?' selected':''}>${esc(e.name)}</option>`).join('')+(cu?`<optgroup label="Your events">${cu}</optgroup>`:'')}
 function fillEventSelects(){if(!BMAP[DB.ev]&&!DB.custom.some(c=>c.id===DB.ev))DB.ev='333';$('#evSel').innerHTML=eventOptions(DB.ev);
   $('#onEv').innerHTML=eventOptions(DB.ev);$('#lbEv').innerHTML=eventOptions(LB.ev)}
-$('#evSel').addEventListener('change',e=>{DB.ev=e.target.value;save();curScr=newScr(eventById(DB.ev));mainT.reset();renderMain();if(TAB==='stats')renderStats()});
+$('#evSel').addEventListener('change',e=>{DB.ev=e.target.value;save();nextMain();mainT.reset();renderMain();if(TAB==='stats')renderStats()});
 $('#evAdd').addEventListener('click',()=>{setTab('data');$('#ceName').focus()});
 
 /* ================= main timer ================= */
-let curScr='',openRow=-1;
+let curScr='',curLab='',curPend=false,scrTok=0,openRow=-1;
+async function nextMain(){const tok=++scrTok,ev=eventById(DB.ev);curScr='';curPend=true;renderScr();const r=await makeScr(ev,rand32());if(tok!==scrTok)return;curScr=r.s;curLab=r.lab;curPend=false;renderScr()}
 const mainT=new STimer({el:$('#tdisp'),opts:timerOpts,
   onStart:()=>document.body.classList.add('running'),
   onCancel:()=>document.body.classList.remove('running'),
-  onStop:({t,p})=>{document.body.classList.remove('running');const s=curSession();s.solves.push({t,p,s:curScr,d:Date.now()});save();curScr=newScr(eventById(DB.ev));openRow=-1;renderMain()},
+  onStop:({t,p})=>{document.body.classList.remove('running');const s=curSession();s.solves.push({t,p,s:curScr,d:Date.now()});save();nextMain();openRow=-1;renderMain()},
   idleText:()=>{const s=curSession().solves;return s.length?fmtSolve(s[s.length-1]):'0.00'}});
 bindTouch($('#tarea'),mainT);
-$('#scrNext').addEventListener('click',()=>{curScr=newScr(eventById(DB.ev));renderScr()});
+$('#scrNext').addEventListener('click',()=>nextMain());
 // shows a scramble; megaminx keeps each line whole and shrinks the font until the longest line fits
 function setScrText(el,text,ev){const mega=!!(ev&&ev.puz==='mega'&&text.includes('\n'));el.textContent=text;el.classList.toggle('mega',mega);el.style.fontSize='';if(mega)fitMega(el)}
 function fitMega(el){const longest=Math.max(...el.textContent.split('\n').map(l=>l.length)),w=el.clientWidth;if(!w||!longest)return;
   el.style.fontSize=Math.min(19,Math.max(9,Math.floor(w/(longest*.61))))+'px'}
 addEventListener('resize',()=>$$('.scr.mega').forEach(fitMega));
-function renderScr(){const ev=eventById(DB.ev);setScrText($('#scr'),curScr||'(no scramble for this event)',ev);$('#diag').innerHTML=diagram(ev,curScr)}
+function renderScr(){const ev=eventById(DB.ev);setScrText($('#scr'),scrText(curScr,curPend),ev);$('#scrLab').textContent=curPend?'':LABELS[curLab]||'';$('#diag').innerHTML=curScr?diagram(ev,curScr):''}
 function setPen(sess,i,v){if(v==='del'){sess.solves.splice(i,1)}else sess.solves[i].p=+v;save();openRow=-1;renderMain();mainT.render()}
 $('#lastBar').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const s=curSession();if(!s.solves.length)return;setPen(s,s.solves.length-1,b.dataset.pen)});
 ['optInsp','optHide'].forEach(id=>$('#'+id).addEventListener('change',e=>{DB.settings[id==='optInsp'?'inspect':'hide']=e.target.checked;save()}));
@@ -957,7 +1028,8 @@ function battleTable(){if(!DB.battles.length)return`<div class="card"><h2>Battle
 
 /* ================= local battle ================= */
 const LB={ev:DB.ev,id:uid(),rounds:[]};
-function lbNewRound(){LB.rounds.push({scr:newScr(eventById(LB.ev)),a:null,b:null})}
+function lbNewRound(){const r={scr:'',pend:true,lab:'',a:null,b:null},id=LB.id;LB.rounds.push(r);
+  makeScr(eventById(LB.ev),rand32()).then(x=>{r.scr=x.s;r.lab=x.lab;r.pend=false;if(LB.id===id&&lbCur()===r&&TAB==='local')renderLocal()})}
 const lbCur=()=>LB.rounds[LB.rounds.length-1];
 const lbDone=r=>r.a&&r.b;
 const LT=[0,1].map(k=>new STimer({el:$('#lt'+(k+1)),opts:()=>({inspect:DB.settings.inspect,hold:+DB.settings.hold,hide:false}),
@@ -975,7 +1047,7 @@ $('#lbEv').addEventListener('change',e=>{LB.ev=e.target.value;LB.id=uid();LB.rou
 document.querySelector('#tab-local .duo').addEventListener('click',e=>{const b=e.target.closest('button[data-lp]');if(!b)return;const r=lbCur(),k=b.dataset.lp==='1'?'b':'a';
   if(r[k]){r[k].p=+b.dataset.pen;lbRecord();LT[+b.dataset.lp].render();renderLocal()}});
 function renderLocal(){const ev=eventById(LB.ev),r=lbCur();$('#p1n').value=DB.settings.p1;$('#p2n').value=DB.settings.p2;$('#pl1n').textContent=DB.settings.p1;$('#pl2n').textContent=DB.settings.p2;
-  $('#lbRound').textContent=ev.name+' · Round '+LB.rounds.length;setScrText($('#lbScr'),r.scr||'(no scramble)',ev);$('#lbDiag').innerHTML=diagram(ev,r.scr);
+  $('#lbRound').textContent=ev.name+' · Round '+LB.rounds.length;setScrText($('#lbScr'),scrText(r.scr,r.pend),ev);$('#lbLab').textContent=LABELS[r.lab]||'';$('#lbDiag').innerHTML=r.scr?diagram(ev,r.scr):'';
   let w1=0,w2=0;const rows=LB.rounds.map((x,i)=>{if(!lbDone(x))return'';const a=eff(x.a),b=eff(x.b);if(a<b)w1++;else if(b<a)w2++;
     return`<tr><td class="t">${i+1}</td><td class="${a<b?'best':''}">${fmtSolve(x.a)}</td><td class="${b<a?'best':''}">${fmtSolve(x.b)}</td><td class="t">${a<b?esc(DB.settings.p1):b<a?esc(DB.settings.p2):'Draw'}</td></tr>`}).reverse().join('');
   $('#lbScore').textContent=w1+' - '+w2;$('#lbNext').disabled=!lbDone(r);
@@ -984,10 +1056,12 @@ function renderLocal(){const ev=eventById(LB.ev),r=lbCur();$('#p1n').value=DB.se
   LT.forEach(t=>t.render())}
 
 /* ================= online battle ================= */
-const ON={nr:null,code:'',def:null,ev:null,raw:[],peers:[],st:'idle'};
+const ON={nr:null,code:'',def:null,ev:null,raw:[],peers:[],st:'idle',scrs:{}};
 const caps={};async function cap(n){if(n in caps)return caps[n];try{caps[n]=window.claude&&window.claude.use?await window.claude.use(n):null}catch(e){caps[n]=null}return caps[n]}
 const onRes=()=>ON.raw.map(r=>r.p===-1?-1:r.t+r.p);
-function onScramble(r){return ON.ev?ON.ev.scr(mulberry32(hashStr(ON.code+'#'+r))):''}
+// both players derive the same seed from room code + round, so they get the same scramble
+function onScramble(r){if(!ON.ev)return{s:'',pend:false,lab:''};const k=ON.code+'#'+r;if(!ON.scrs[k]){const o=ON.scrs[k]={s:'',pend:true,lab:''};
+  makeScr(ON.ev,hashStr(k)).then(x=>{o.s=x.s;o.lab=x.lab;o.pend=false;if(TAB==='online')renderOnline()})}return ON.scrs[k]}
 function onPresence(){if(!ON.nr)return;ON.nr.presence({nick:DB.settings.nick||'Guest',def:ON.def,res:onRes(),st:ON.st}).catch(()=>{})}
 const onT=new STimer({el:$('#onDisp'),opts:timerOpts,locked:()=>!ON.ev||ON.raw.length>=150,
   onStart:()=>{ON.st='solving';onPresence()},onCancel:()=>{ON.st='idle';onPresence()},
@@ -999,7 +1073,7 @@ async function onEnter(code,def){const err=$('#onErr');err.textContent='';code=c
   const nick=$('#onNick').value.trim().slice(0,20);if(!nick){err.textContent='Please enter a nickname.';$('#onNick').focus();return}DB.settings.nick=nick;save();
   const room=await cap('room');if(!room){err.textContent='Online battles only work when this page is opened on claude.ai while signed in.';return}
   try{ON.nr=await room.join(code)}catch(e){err.textContent='Could not join the room ('+(e&&e.code||'error')+'). Please wait a moment and try again.';return}
-  ON.code=code;ON.def=def;ON.ev=def?resolveEvent(def):null;ON.raw=[];ON.st='idle';onT.reset();
+  ON.code=code;ON.def=def;ON.scrs={};ON.ev=def?resolveEvent(def):null;ON.raw=[];ON.st='idle';onT.reset();
   ON.nr.onPeers(ch=>{ON.peers=ch.peers;if(!ON.ev){const p=ch.peers.find(x=>!x.sameTab&&x.presence&&x.presence.def);if(p){ON.def=cleanDef(p.presence.def);ON.ev=resolveEvent(ON.def);onPresence()}}onRecord();renderOnline()},
     e=>{$('#onErr').textContent='Disconnected ('+e.code+').';});
   onPresence();renderOnline()}
@@ -1019,8 +1093,8 @@ function renderOnline(){$('#onNick').value=DB.settings.nick||'';$('#onEv').inner
   const os=others(),me=onRes(),nick=DB.settings.nick||'Guest';
   $('#onPeers').innerHTML=`<div class="peer"><span class="dot on"></span><b>${esc(nick)}</b><span class="muted small">you · ${me.length} rounds done</span></div>`+
     (os.length?os.map(p=>`<div class="peer"><span class="dot ${p.presence.st==='solving'?'solving':'on'}"></span><b>${esc(pnick(p))}</b><span class="muted small">${p.presence.st==='solving'?'Solving':pres(p).length+' rounds done'}${p.guest?' · guest':''}</span></div>`).join(''):`<p class="muted small" style="margin:4px 0 0">Waiting for an opponent. Share the room code <b class="num">${esc(ON.code)}</b> with them.</p>`);
-  const r=me.length+1;$('#onRound').textContent='Round '+r;const scr=onScramble(r);
-  setScrText($('#onScr'),ON.ev?(scr||'(no scramble)'):'Waiting for the opponent…',ON.ev);$('#onDiag').innerHTML=ON.ev?diagram(ON.ev,scr):'';
+  const r=me.length+1;$('#onRound').textContent='Round '+r;const so=onScramble(r);
+  setScrText($('#onScr'),ON.ev?scrText(so.s,so.pend):'Waiting for the opponent…',ON.ev);$('#onDiag').innerHTML=so.s?diagram(ON.ev,so.s):'';
   const cols=[{n:nick+' (you)',res:me},...os.map(p=>({n:pnick(p),res:pres(p)}))],max=Math.max(0,...cols.map(c=>c.res.length));const wins=cols.map(()=>0);let rows='';
   for(let i=0;i<max;i++){const vals=cols.map(c=>c.res[i]==null?null:(c.res[i]<0?Infinity:c.res[i]));const full=vals.every(v=>v!=null)&&cols.length>1;let bi=-1;
     if(full){const m=Math.min(...vals);if(vals.filter(v=>v===m).length===1&&m!==Infinity){bi=vals.indexOf(m);wins[bi]++}}
@@ -1071,9 +1145,9 @@ function renderData(){$('#ceBase').innerHTML=`<option value="nxn">N×N cube (cho
 const CE={base:'nxn',del:null};
 $('#ceBase').addEventListener('change',e=>{CE.base=e.target.value;renderData()});
 $('#ceAdd').addEventListener('click',()=>{const name=$('#ceName').value.trim();if(!name){toast('Please enter a name');$('#ceName').focus();return}
-  const d=cleanDef({id:'c'+uid(),name,base:CE.base,n:+$('#ceN').value,len:+$('#ceLen').value});DB.custom.push(d);DB.ev=d.id;save();$('#ceName').value='';fillEventSelects();curScr=newScr(eventById(DB.ev));renderData();renderMain();toast('Added “'+name+'”')});
+  const d=cleanDef({id:'c'+uid(),name,base:CE.base,n:+$('#ceN').value,len:+$('#ceLen').value});DB.custom.push(d);DB.ev=d.id;save();$('#ceName').value='';fillEventSelects();nextMain();renderData();renderMain();toast('Added “'+name+'”')});
 $('#ceList').addEventListener('click',e=>{const b=e.target.closest('[data-cdel]');if(!b)return;const id=b.dataset.cdel;if(CE.del!==id){CE.del=id;renderData();return}
-  DB.custom=DB.custom.filter(c=>c.id!==id);CE.del=null;if(DB.ev===id)DB.ev='333';save();fillEventSelects();curScr=newScr(eventById(DB.ev));renderData();renderMain();toast('Event deleted (its records are kept)')});
+  DB.custom=DB.custom.filter(c=>c.id!==id);CE.del=null;if(DB.ev===id)DB.ev='333';save();fillEventSelects();nextMain();renderData();renderMain();toast('Event deleted (its records are kept)')});
 // resolves true once the file is saved (or shown for copying), false if the viewer declined
 async function offerFile(name,text){
   if(!window.claude){try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('Saved');$('#exOut').hidden=true;return true}catch(e){}}
@@ -1178,7 +1252,7 @@ let wipeArm=false;
 $('#wipe').addEventListener('click',()=>{if(!wipeArm){wipeArm=true;$('#wipe').textContent='Really delete? (press again)';setTimeout(()=>{wipeArm=false;$('#wipe').textContent='Delete all data'},4000);return}
   // keep what is being wiped as the automatic backup, so a mistaken wipe can be undone
   if(totalSolves()){const s=JSON.stringify({at:Date.now(),db:JSON.stringify(DB)});STORE.snap=s;putRaw(SNAP,s).catch(()=>{})}
-  const st=DB.settings,wca=DB.wca;DB=freshDB();DB.settings=st;DB.wca=wca;DB.meta.snapDay=dayKey(Date.now());save();fillEventSelects();curScr=newScr(eventById(DB.ev));renderMain();renderData();renderMove();wipeArm=false;$('#wipe').textContent='Delete all data';toast('All data deleted (use “Restore from automatic backup” to undo)')});
+  const st=DB.settings,wca=DB.wca;DB=freshDB();DB.settings=st;DB.wca=wca;DB.meta.snapDay=dayKey(Date.now());save();fillEventSelects();nextMain();renderMain();renderData();renderMove();wipeArm=false;$('#wipe').textContent='Delete all data';toast('All data deleted (use “Restore from automatic backup” to undo)')});
 
 /* ================= keyboard ================= */
 const isField=t=>t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||$('#avgDlg').open||$('#pickDlg').open);
@@ -1198,7 +1272,8 @@ document.addEventListener('keyup',e=>{if(isField(e.target))return;
 // in-app browsers (LINE etc.) can lose their storage: suggest opening the page in the regular browser
 if(window===window.top&&/\b(Line|FBAN|FBAV|Instagram)\//i.test(navigator.userAgent)){const n=$('#inappNote'),u=new URL(location.href);u.searchParams.set('openExternalBrowser','1');
   n.innerHTML=`You are in an in-app browser, where records can be lost. Please<a href="${esc(u.href)}" target="_blank" rel="noopener">open this page in your regular browser</a>.`;n.hidden=false}
-loadStore().then(()=>{LB.ev=DB.ev;lbNewRound();fillEventSelects();curScr=newScr(eventById(DB.ev));renderMain();if(TAB!=='timer')setTab(TAB);askPersist()});
+c3init();
+loadStore().then(()=>{LB.ev=DB.ev;lbNewRound();fillEventSelects();nextMain();renderMain();if(TAB!=='timer')setTab(TAB);askPersist()});
 </script>
 
 </body></html>
