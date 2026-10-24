@@ -6,7 +6,7 @@ window.SITE = {
   contact: 'deppersinging@gmail.com',     // 問い合わせ先（メールアドレスか、Googleフォームなどの URL）
   since: '2026年10月',
   kofi: 'https://ko-fi.com/cubelabtimerdepper',  // 応援ボタンのリンク（Ko-fi）
-  amazonTag: '',           // Amazon アソシエイト（日本・amazon.co.jp）のトラッキングID（例 'yourid-22'）
+  amazonTag: 'cubelabtimer-22',  // Amazon アソシエイト（日本・amazon.co.jp）のトラッキングID（例 'yourid-22'）
   amazonTagUS: '',         // Amazon Associates（米国・amazon.com）のトラッキングID（例 'yourid-20'）。英語ページで使う
   adsenseClient: '',       // AdSense のパブリッシャーID（例 'ca-pub-1234567890123456'）
   cfBeacon: ''             // Cloudflare Web Analytics のトークン（アクセス数を見るため・Cookieなし）
