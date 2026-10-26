@@ -139,6 +139,29 @@ canvas{display:block;max-width:100%}
 .pl .pt{font-family:var(--f-mono);font-weight:700;font-size:clamp(44px,8vw,84px);line-height:1;font-variant-numeric:tabular-nums}
 .pl .pt[data-st=hold]{color:var(--hold)} .pl .pt[data-st=ready]{color:var(--ready)} .pl .pt[data-st=insp],.pl .pt[data-st=arm]{color:var(--warn)}
 .pname{font-weight:700}
+.pens button,.fpen button{min-width:4.5em}
+/* full-screen 2-player: two touch halves with a thin score bar between them */
+body.fsOn{overflow:hidden}
+.lbfs{position:fixed;inset:0;z-index:40;background:var(--bg);display:grid;grid-template-rows:minmax(0,1fr) auto minmax(0,1fr);
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.half{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px 16px;min-height:0;overflow:hidden;
+  touch-action:none;user-select:none;-webkit-user-select:none;background:var(--surface);border:3px solid transparent;border-radius:16px;margin:6px}
+.half.flip{transform:rotate(180deg)}
+.half.win{border-color:var(--good)}
+.fhd{display:flex;gap:10px;align-items:baseline}
+.fwin{font-family:var(--f-mono);color:var(--muted)}
+.fscr{font-size:clamp(13px,3.6vw,18px);text-align:center;flex:0 1 auto;width:100%}
+.fdiag svg{max-height:min(110px,13vh);width:auto}
+.ft{font-family:var(--f-mono);font-weight:700;font-size:clamp(56px,17vw,120px);line-height:1;font-variant-numeric:tabular-nums}
+.ft[data-st=hold]{color:var(--hold)} .ft[data-st=ready]{color:var(--ready)} .ft[data-st=insp],.ft[data-st=arm]{color:var(--warn)}
+.fhint{color:var(--muted);font-size:13px;text-align:center;min-height:1.4em}
+.fpen{display:flex;gap:10px}
+.fpen button{font-size:20px;font-weight:700;padding:12px 18px;border-radius:12px}
+.fpen button[data-pen="0"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.fmid{display:flex;gap:14px;align-items:center;justify-content:center;padding:2px 16px}
+.fmid .num{font-size:20px;font-weight:700}
+.half[data-run] .fscr,.half[data-run] .fdiag,.half[data-run] .fhd{visibility:hidden}
+@media (max-height:560px){.fdiag{display:none}}
 .score{font-family:var(--f-mono);font-size:22px;font-weight:700}
 .roomcode{font-family:var(--f-mono);font-size:20px;font-weight:700;letter-spacing:.04em;background:var(--surface2);padding:4px 12px;border-radius:8px}
 .peer{display:flex;gap:8px;align-items:center;padding:4px 0}
@@ -147,6 +170,8 @@ canvas{display:block;max-width:100%}
 .note{background:var(--surface2);border-radius:10px;padding:10px 12px;color:var(--muted);font-size:13px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:20}
 textarea{width:100%;min-height:140px;font-family:var(--f-mono);font-size:12px;background:var(--surface2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;box-sizing:border-box}
+.today{border-top:1px solid var(--line);padding:8px 0 10px}
+.today .nxg{grid-template-columns:auto 1fr auto 1fr}
 .nx{border-top:1px solid var(--line);padding:10px 0 12px}
 .nxg{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin-top:6px;align-items:baseline}
 .nxg .num{text-align:right}
@@ -187,6 +212,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
       <button role="tab" data-tab="timer" aria-selected="true">タイマー</button>
       <button role="tab" data-tab="stats" aria-selected="false">統計</button>
       <button role="tab" data-tab="local" aria-selected="false">2人対戦</button>
+      <button role="tab" data-tab="online" aria-selected="false">オンライン対戦</button>
       <button role="tab" data-tab="wca" aria-selected="false">WCA記録</button>
       <button role="tab" data-tab="move" aria-selected="false">記録の移行</button>
       <button role="tab" data-tab="data" aria-selected="false">種目</button>
@@ -203,7 +229,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
       <div class="card">
         <div class="scrbar dim"><div id="scr" class="scr"></div><button id="scrNext" title="別の手順にする">次の手順</button></div>
         <div class="small muted dim" id="scrLab"></div>
-        <div id="tarea" class="tarea"><div id="tdisp" class="tdisp">0.00</div><div class="hint dim" id="thint">スペースキーを長押し → 緑になったら離してスタート／何かキーで停止（スマホは画面を長押し）<br>スタート前に取り消す：長押し中に Esc か他のキー（スマホは指を枠の外へずらす）</div></div>
+        <div id="tarea" class="tarea"><div id="tdisp" class="tdisp">0.00</div><div class="hint dim" id="thint">スペースキーを長押し → 緑になったら離してスタート／何かキーで停止（スマホは画面を長押し。計測中は画面のどこを触っても止まります）<br>スタート前に取り消す：長押し中に Esc か他のキー（スマホは指を枠の外へずらす）</div></div>
         <div class="lastbar dim" id="lastBar">
           <button data-pen="0">OK</button><button data-pen="2000">+2</button><button data-pen="-1">DNF</button><button data-pen="del">削除</button>
         </div>
@@ -221,6 +247,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
         </div>
         <div class="note small" id="bkNote" hidden></div>
         <div class="qs" id="qs"></div>
+        <div class="today" id="today"></div>
         <div class="nx" id="nxBox">
           <div class="row" style="justify-content:space-between"><b class="small">次の1回で ao5 は</b><label class="small">目標 ao5 <input type="number" id="tgIn" min="0" step="0.01" placeholder="なし" style="width:5.5em"> 秒</label></div>
           <div id="nx"></div>
@@ -239,12 +266,15 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
   <!-- LOCAL BATTLE -->
   <section class="tab" id="tab-local" hidden>
     <div class="card">
+      <div class="row" style="justify-content:space-between"><div><h2 style="margin:0">2人対戦</h2><span class="muted small" id="lbSum"></span></div><button id="lbFull" class="pri bigstart">全画面で対戦する</button></div>
+      <p class="muted small" style="margin:8px 0 0">1台のスマホを向かい合って置くと、上半分と下半分がそれぞれのタッチ場所になります。計測中は自分の側のどこを触っても止まります。</p>
+      <details class="howto" id="lbSet"><summary>設定（種目・名前）</summary>
       <div class="row">
         <label for="lbEv">種目</label><select id="lbEv"></select>
         <label for="p1n">プレイヤー1</label><input type="text" id="p1n" maxlength="20" style="width:9em">
         <label for="p2n">プレイヤー2</label><input type="text" id="p2n" maxlength="20" style="width:9em">
         <button id="lbReset">新しい対戦にする</button>
-      </div>
+      </div></details>
     </div>
     <div class="card">
       <div class="row" style="justify-content:space-between"><h3 id="lbRound" style="margin:0">ラウンド 1</h3><div class="score" id="lbScore">0 - 0</div></div>
@@ -252,14 +282,21 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
       <div class="diag" id="lbDiag"></div>
     </div>
     <div class="duo">
-      <div class="pl" id="pl1"><div class="pname" id="pl1n"></div><div class="pt" id="lt1">0.00</div><div class="muted small">キー：左Shift か A ／ この枠を長押し（Esc か枠の外へずらすと取り消し）</div><div class="row"><button data-lp="0" data-pen="0">OK</button><button data-lp="0" data-pen="2000">+2</button><button data-lp="0" data-pen="-1">DNF</button></div></div>
-      <div class="pl" id="pl2"><div class="pname" id="pl2n"></div><div class="pt" id="lt2">0.00</div><div class="muted small">キー：右Shift か L ／ この枠を長押し（Esc か枠の外へずらすと取り消し）</div><div class="row"><button data-lp="1" data-pen="0">OK</button><button data-lp="1" data-pen="2000">+2</button><button data-lp="1" data-pen="-1">DNF</button></div></div>
+      <div class="pl" id="pl1"><div class="pname" id="pl1n"></div><div class="pt" id="lt1">0.00</div><div class="muted small">キー：左Shift か A ／ この枠を長押し（Esc か枠の外へずらすと取り消し）</div><div class="row pens" hidden><button data-lp="0" data-pen="0">OK</button><button data-lp="0" data-pen="2000">+2</button><button data-lp="0" data-pen="-1">DNF</button></div></div>
+      <div class="pl" id="pl2"><div class="pname" id="pl2n"></div><div class="pt" id="lt2">0.00</div><div class="muted small">キー：右Shift か L ／ この枠を長押し（Esc か枠の外へずらすと取り消し）</div><div class="row pens" hidden><button data-lp="1" data-pen="0">OK</button><button data-lp="1" data-pen="2000">+2</button><button data-lp="1" data-pen="-1">DNF</button></div></div>
     </div>
     <div class="card">
       <div class="row" style="justify-content:space-between"><h3 style="margin:0">ラウンド結果</h3><button id="lbNext" class="pri" disabled>次のラウンド（Enter）</button></div>
+      <p class="muted small" style="margin:6px 0 0">2人とも OK・+2・DNF を選ぶと、2秒後に次のラウンドへ進みます。</p>
       <div class="tbl" id="lbHist" style="margin-top:8px"></div>
     </div>
   </section>
+  <!-- full-screen 2-player view: player 2 sits across the table, so the top half is turned 180° -->
+  <div id="lbFs" class="lbfs" hidden>
+    <div class="half flip" id="fh2"><div class="fhd"><b id="fn2"></b><span class="fwin" id="fw2"></span></div><div class="scr fscr" id="fs2"></div><div class="diag fdiag" id="fd2"></div><div class="ft" id="ft2">0.00</div><div class="fhint" id="fi2"></div><div class="fpen" hidden><button data-fk="1" data-pen="0">OK</button><button data-fk="1" data-pen="2000">+2</button><button data-fk="1" data-pen="-1">DNF</button></div></div>
+    <div class="fmid"><span class="num" id="fmScore"></span><span class="muted small" id="fmRound"></span><button id="fsExit" class="ghost">終了</button></div>
+    <div class="half" id="fh1"><div class="fhd"><b id="fn1"></b><span class="fwin" id="fw1"></span></div><div class="scr fscr" id="fs1"></div><div class="diag fdiag" id="fd1"></div><div class="ft" id="ft1">0.00</div><div class="fhint" id="fi1"></div><div class="fpen" hidden><button data-fk="0" data-pen="0">OK</button><button data-fk="0" data-pen="2000">+2</button><button data-fk="0" data-pen="-1">DNF</button></div></div>
+  </div>
 
   <!-- ONLINE -->
   <section class="tab" id="tab-online" hidden>
@@ -270,7 +307,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
         <div><h3>ルームを作る</h3><div class="row"><label for="onEv">種目</label><select id="onEv"></select><button id="onCreate" class="pri">作成</button></div></div>
         <div><h3>コードで参加</h3><div class="row"><input type="text" id="onCode" placeholder="例 cl-k7p2q9" style="width:11em" maxlength="48"><button id="onJoin">参加</button></div></div>
       </div>
-      <p class="note" style="margin-top:12px">相手にもこのページのリンクを開いてもらい、同じルームコードで参加します。どちらも同じ手順で解き、ラウンドごとに速いほうが勝ち。自分のペースで次へ進めます。</p>
+      <p class="note" style="margin-top:12px">相手にもこのページのリンクを開いてもらい、同じルームコードで参加します。どちらも同じ手順で解き、ラウンドごとに速いほうが勝ち。自分のペースで次へ進めます。<span id="onVia"></span></p>
       <p class="muted small" id="onErr"></p>
     </div>
     <div id="onRoom" class="tab" hidden>
@@ -285,8 +322,8 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
         <h3 id="onRound">ラウンド 1</h3>
         <div class="scr" id="onScr"></div>
         <div class="diag" id="onDiag"></div>
-        <div id="onArea" class="tarea"><div id="onDisp" class="tdisp">0.00</div><div class="hint">スペース長押し → 離してスタート（スマホは長押し）／長押し中に Esc か指を枠の外へずらすと取り消し</div></div>
-        <div class="lastbar"><button data-op="0">OK</button><button data-op="2000">+2</button><button data-op="-1">DNF</button></div>
+        <div id="onArea" class="tarea"><div id="onDisp" class="tdisp">0.00</div><div class="hint">スペース長押し → 離してスタート（スマホは長押し）／計測中は画面のどこを触っても止まります<br>長押し中に Esc か指を枠の外へずらすと取り消し</div></div>
+        <div class="lastbar" id="onPen" hidden><button data-op="0">OK</button><button data-op="2000">+2</button><button data-op="-1">DNF</button></div>
       </div>
       <div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">結果</h3><div class="score" id="onScore"></div></div><div class="tbl" id="onTable" style="margin-top:8px"></div></div>
     </div>
@@ -305,7 +342,8 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
     </div>
     <div class="card" id="wcaPerson" hidden></div>
     <div class="card"><h2>種目ごとの比較</h2><div class="tbl" id="wcaTable"></div>
-      <p class="muted small">練習ベストは、このタイマーの全セッションから種目ごとに出しています（平均は ao5 のベスト。6×6・7×7・目隠しは mo3）。差は「練習ベスト − 比べる記録」で、マイナスなら記録より速いということです。</p></div>
+      <p class="muted small">練習ベストは、このタイマーの全セッションから種目ごとに出しています（平均は ao5 のベスト。6×6・7×7・目隠しは mo3）。差は「練習ベスト − 比べる記録」で、マイナスなら記録より速いということです。</p>
+      <p class="muted small">「順位」は、練習ベストを WCA の公式ランキングに当てはめた場合の順位です（自分より速い公式記録の人数＋1）。ランキングは非公式 WCA API（WCA の公式データから毎日作り直されるもの）から取得し、各国の上位1000人までが入っています。そこより遅い場合は「1000位より下」と表示します。練習のタイムなので、あくまで目安です。</p></div>
   </section>
 
   <!-- DATA -->
@@ -507,7 +545,8 @@ function makeMega(){
   for(let k=0;k<5;k++)N.push(mul(N[1+k],-1));
   N.push([0,-1,0]);
   const OPP=i=>i===0?11:i===11?0:i<=5?i+5:i-5;
-  const COL=['#ffffff','#1f9a3e','#e0302f','#7b3fb8','#ffd500','#2563d6','#9fe36a','#ff9ac2','#fff0b8','#b4c0cc','#ff8c1a','#7fd3ff'];
+  // WCA (TNoodle) scheme, by face: U, F, R, BR, BL, L, then the opposites B, DBL, DL, DR, DBR, and D
+  const COL=['#ffffff','#1d7a35','#e0302f','#1f3fa8','#f2b600','#9b4fd6','#8fe048','#ff8c1a','#7fd3ff','#fff0b8','#ff9ac2','#9aa3ad'];
   const adj=i=>N.map((_,j)=>j).filter(j=>j!==i&&Math.abs(dot(N[i],N[j])-1/s5)<1e-6);
   const solve3=(a,b,c)=>{const d=dot(a,cross(b,c));return mul(add(add(cross(b,c),cross(c,a)),cross(a,b)),1/d)};
   const inter=(p1,p2,p3,p4)=>{const d=(p1[0]-p2[0])*(p3[1]-p4[1])-(p1[1]-p2[1])*(p3[0]-p4[0]);const t=((p1[0]-p3[0])*(p3[1]-p4[1])-(p1[1]-p3[1])*(p3[0]-p4[0]))/d;return[p1[0]+t*(p2[0]-p1[0]),p1[1]+t*(p2[1]-p1[1])]};
@@ -624,9 +663,91 @@ function pyraScramble(rng){const m=[];let last='';while(m.length<10){const f='UL
   for(const t of'ulrb'){const k=ri(rng,3);if(k)m.push(t+(k===2?"'":''))}return m.join(' ')}
 function skewbScramble(rng){const m=[];let last='';while(m.length<9){const f='RULB'[ri(rng,4)];if(f===last)continue;last=f;m.push(f+(rng()<.5?'':"'"))}return m.join(' ')}
 function megaScramble(rng){const L=[];for(let l=0;l<7;l++){const mv=[];let s='';for(let i=0;i<10;i++){s=rng()<.5?'++':'--';mv.push((i%2?'D':'R')+s)}mv.push(s==='++'?'U':"U'");L.push(mv.join(' '))}return L.join('\n')}
+// random-move fallback; WCA 12c2: (x,y) is never (0,0)
 function sq1Scramble(rng){const P=getPuzzle('sq1');let st=P.solved();const out=[];
-  for(let k=0;k<12;k++){const c=[];for(let x=-5;x<=6;x++)for(let y=-5;y<=6;y++){if(k>0&&x===0&&y===0)continue;const s2=P.turn(st,x,y);if(P.can(s2))c.push([x,y,s2])}
+  for(let k=0;k<12;k++){const c=[];for(let x=-5;x<=6;x++)for(let y=-5;y<=6;y++){if(x===0&&y===0)continue;const s2=P.turn(st,x,y);if(P.can(s2))c.push([x,y,s2])}
     const[x,y,s2]=c[ri(rng,c.length)];st=P.slash(s2);out.push(`(${x},${y})`)}return out.join(' / ')+' /'}
+
+/* Square-1 random state: random position -> two-phase solve (phase 1: reach cube shape, phase 2: pieces in cube shape) -> inverted.
+   A state is 24 cells (top 0-11, bottom 12-23, both numbered clockwise seen from the top, starting at the back of the slash line)
+   holding piece ids (even = edge, odd = corner over two cells) plus the middle layer flag at [24]; same model as makeSq1. */
+const SQ={};
+const sqTurn=(s,x,y)=>{const n=new Int8Array(25);for(let i=0;i<12;i++){n[mod(i+x,12)]=s[i];n[12+mod(i-y,12)]=s[12+i]}n[24]=s[24];return n};
+const sqSlash=s=>{const n=s.slice();for(let i=0;i<6;i++){n[5-i]=s[12+i];n[17-i]=s[i]}n[24]^=1;return n};
+const sqCan=s=>s[11]!==s[0]&&s[5]!==s[6]&&s[23]!==s[12]&&s[17]!==s[18];
+// shape only: per cell edge / first half of a corner / second half, packed into one number
+const sqShape=s=>{let a=0,b=0;for(let i=0;i<12;i++){const u=s[i],v=s[12+i];a=a*4+(u%2===0?0:s[(i+1)%12]===u?1:2);b=b*4+(v%2===0?0:s[12+(i+1)%12]===v?1:2)}return a*16777216+b};
+// parity of the corners read in cell order plus that of the edges (in G's cube shape this is exactly what phase 2 cannot change)
+function sqPar(s){const c=[],e=[];for(let k=0;k<24;k++){const L=k<12?0:12,id=s[k];if(id%2===0)e.push(id);else if(s[L+(k-L+1)%12]===id)c.push(id)}
+  let p=0;for(const a of[c,e])for(let i=0;i<8;i++)for(let j=i+1;j<8;j++)if(a[j]<a[i])p^=1;return p}
+function sqSolved(){const s=new Int8Array(25),L=[0,1,1,2,3,3,4,5,5,6,7,7];for(let i=0;i<12;i++){s[i]=L[i];s[12+i]=L[i]+8}return s}
+function sqInit(){if(SQ.ok)return SQ;
+  // phase 1 works on the 3678 slashable shapes: TT = shape after turn j (x*12+y, -1 if not slashable), SL = shape after slash
+  const G=sqTurn(sqSolved(),0,1),idx=new Map(),reps=[];const add=s=>{const k=sqShape(s);if(!idx.has(k)){idx.set(k,reps.length);reps.push(s)}};
+  add(G);for(let i=0;i<reps.length;i++){const s=reps[i];for(let j=0;j<144;j++){const t=sqTurn(s,j/12|0,j%12);if(sqCan(t))add(t)}add(sqSlash(s))}
+  // a move's effect on sqPar depends on the shape alone, so phase 1 tracks it too: TP / SP = parity flip of turn j / of the slash
+  const N=reps.length,TT=new Int16Array(N*144),TP=new Uint8Array(N*144),SL=new Int16Array(N),SP=new Uint8Array(N);
+  for(let i=0;i<N;i++){const r=reps[i],pr=sqPar(r);for(let j=0;j<144;j++){const t=sqTurn(r,j/12|0,j%12);if(sqCan(t)){TT[i*144+j]=idx.get(sqShape(t));TP[i*144+j]=sqPar(t)^pr}else TT[i*144+j]=-1}
+    const u=sqSlash(r);SL[i]=idx.get(sqShape(u));SP[i]=sqPar(u)^pr}
+  // fewest slashes from each (shape, parity) to G's cube shape with G's parity (turns are free)
+  const gp=sqPar(G),D1=new Uint8Array(N*2).fill(255);D1[gp]=0;let lev=[gp];
+  for(let d=0;lev.length;d++){const all=[],st=lev.slice();while(st.length){const x=st.pop(),i=x>>1;all.push(x);
+      for(let j=0;j<144;j++){const k=TT[i*144+j];if(k<0)continue;const y=k*2+((x&1)^TP[i*144+j]);if(D1[y]===255){D1[y]=d;st.push(y)}}}
+    const nx=[];for(const x of all){const i=x>>1,y=SL[i]*2+((x&1)^SP[i]);if(D1[y]===255){D1[y]=d+1;nx.push(y)}}lev=nx}
+  // phase 2: in G's cube shape, corners sit at CP and edges at EP. A move is a (3a,3b) turn + slash (j<16), or a (3a+2,3b+2) turn + slash
+  // followed by a (1,1) turn back into G's shape (j>=16; that (1,1) is carried into the next turn). Quarter turns alone keep each
+  // edge glued to its corner, so the second kind is what lets every arrangement be reached.
+  const CP=[1,4,7,10,12,15,18,21],EP=[0,3,6,9,14,17,20,23];
+  const arr=(s,P)=>P.map(c=>s[c]>>1),F=[1,1,2,6,24,120,720,5040];
+  const enc=a=>{let r=0;for(let i=0;i<8;i++){let c=0;for(let j=i+1;j<8;j++)if(a[j]<a[i])c++;r+=c*F[7-i]}return r};
+  const dec=r=>{const left=[0,1,2,3,4,5,6,7],a=[];for(let i=0;i<8;i++){const f=F[7-i],q=Math.floor(r/f);r%=f;a.push(left.splice(q,1)[0])}return a};
+  const MV=[];for(let a=0;a<4;a++)for(let b=0;b<4;b++)MV.push(s=>sqSlash(sqTurn(s,3*a,3*b)));
+  for(let a=0;a<4;a++)for(let b=0;b<4;b++)MV.push(s=>sqTurn(sqSlash(sqTurn(s,3*a+2,3*b+2)),1,1));
+  const maps=P=>MV.map(f=>{const o=arr(G,P),n=arr(f(G),P);return o.map(v=>n.indexOf(v))});
+  const table=(mp,inv)=>{const T=new Int32Array(40320*32);for(let r=0;r<40320;r++){const a=dec(r);mp.forEach((m,j)=>{const n=new Array(8);
+      for(let p=0;p<8;p++){if(inv)n[p]=a[m[p]];else n[m[p]]=a[p]}T[r*32+j]=enc(n)})}return T};
+  const mc=maps(CP),me=maps(EP),CM=table(mc,false),EM=table(me,false),CI=table(mc,true),EI=table(me,true);
+  const goal=new Map(),gc=[],ge=[];for(let a=0;a<4;a++)for(let b=0;b<4;b++){const g=sqTurn(G,3*a,3*b),c=enc(arr(g,CP)),e=enc(arr(g,EP));goal.set(c*40320+e,[a,b]);gc.push(c);ge.push(e)}
+  const prune=(T,gs)=>{const D=new Uint8Array(80640).fill(255);let fr=[];gs.forEach(g=>{if(D[g*2]===255){D[g*2]=0;fr.push(g*2)}});
+    for(let d=0;fr.length;d++){const nx=[];for(const x of fr){const r=x>>1,m=x&1;for(let j=0;j<32;j++){const y=T[r*32+j]*2+(m^1);if(D[y]===255){D[y]=d+1;nx.push(y)}}}fr=nx}return D};
+  // phase 2 moves never change (corner parity xor edge parity), so a phase-1 ending with the other value is skipped at once
+  const PAR=new Uint8Array(40320);for(let r=0;r<40320;r++){const a=dec(r);let p=0;for(let i=0;i<8;i++)for(let j=i+1;j<8;j++)if(a[j]<a[i])p^=1;PAR[r]=p}
+  Object.assign(SQ,{ok:true,idx,TT,TP,SL,SP,D1,gp,CP,EP,arr,enc,CM,EM,goal,PAR,gpar:PAR[gc[0]]^PAR[ge[0]],PC:prune(CI,gc),PE:prune(EI,ge)});return SQ}
+const sqNorm=v=>{v=mod(v,12);return v>6?v-12:v};
+// solves s; returns the list of turns [x,y] with a slash between each pair, or null when the node budget runs out
+function sqSolve(s){const Q=sqInit();let budget=2e7,lim2=0;
+  let leafLeft=0;// per phase-1 ending, so one hard phase 2 cannot use up the whole budget
+  const p2=(cp,ep,m,d,first,out)=>{if(--budget<0||--leafLeft<0)return false;if(d===0){const g=m===0&&Q.goal.get(cp*40320+ep);if(g){out.push(g);return true}return false}
+    for(let j=first?0:1;j<32;j++){const nc=Q.CM[cp*32+j],ne=Q.EM[ep*32+j],nm=m^1;if(Math.max(Q.PC[nc*2+nm],Q.PE[ne*2+nm])>d-1)continue;
+      out.push(j);if(p2(nc,ne,nm,d-1,false,out))return true;out.pop()}return false};
+  const phase2=t=>{const cp=Q.enc(Q.arr(t,Q.CP)),ep=Q.enc(Q.arr(t,Q.EP)),m=t[24],h=Math.max(Q.PC[cp*2+m],Q.PE[ep*2+m]);if(h===255||(Q.PAR[cp]^Q.PAR[ep])!==Q.gpar)return null;
+    leafLeft=1e5;for(let d=h+((h&1)!==m);d<=lim2;d+=2){const out=[];if(p2(cp,ep,m,d,true,out))return out;if(budget<0||leafLeft<0)break}return null};
+  const path=[];let res=null;const xy=j=>[j/12|0,j%12];
+  // the root's turns act on s itself (its shape may not be slashable); deeper levels use the shape tables only
+  // moves are [turn j, (shape, parity) after it]
+  const root=[];for(let j=0;j<144;j++){const t=sqTurn(s,j/12|0,j%12);if(sqCan(t))root.push([j,Q.idx.get(sqShape(t))*2+sqPar(t)])}
+  const leaf=j=>{let t=s;path.forEach(p=>{t=sqSlash(sqTurn(t,...xy(p)))});t=sqTurn(t,...xy(j));const q=phase2(t);if(q){res={T:xy(j),q};return true}return false};
+  const p1=(moves,d)=>{if(budget<0)return false;
+    for(const[j,x]of moves){if(--budget<0)return false;
+      if(d===0){if(x===Q.gp&&leaf(j))return true;continue}
+      const k=x>>1,u=Q.SL[k],up=(x&1)^Q.SP[k];if(Q.D1[u*2+up]>d-1)continue;path.push(j);
+      const nx=[];for(let i=d-1===0?0:1;i<144;i++){const v=Q.TT[u*144+i];if(v>=0)nx.push([i,v*2+(up^Q.TP[u*144+i])])}
+      if(p1(nx,d-1))return true;path.pop()}return false};
+  let d0=255;root.forEach(([,x])=>{d0=Math.min(d0,Q.D1[x])});if(d0===255)return null;
+  // not the shortest overall (that search is too slow here): the first phase-1 ending whose phase 2 is found within lim2 moves
+  // (each phase-2 move flips the middle layer, so only depths of matching parity can end solved)
+  lim2=12;for(let d=d0;d<=d0+2&&!res&&budget>0;d++)p1(root,d);if(!res)return null;
+  // turns: phase-1 turns, then the phase-1 end turn merged with phase 2's first turn, the rest of phase 2, and the final turn to solved
+  const turns=path.map(xy),q=res.q,g=q.pop();let cur=res.T;
+  q.forEach(j=>{const e=j<16?0:2;turns.push([cur[0]+3*((j&15)>>2)+e,cur[1]+3*(j&3)+e]);cur=j<16?[0,0]:[1,1]});turns.push([cur[0]-3*g[0],cur[1]-3*g[1]-1]);return turns}
+function sq1RS(rng){let s=sqSolved();
+  for(let i=0;i<400;i++){const c=[];for(let x=0;x<12;x++)for(let y=0;y<12;y++){if(!x&&!y)continue;const t=sqTurn(s,x,y);if(sqCan(t))c.push(t)}s=sqSlash(c[ri(rng,c.length)])}
+  s=sqTurn(s,ri(rng,12),ri(rng,12));
+  const turns=sqSolve(s);if(!turns)return null;
+  // a (0,0) between two slashes means "/ /", which cancels
+  for(let i=1;i<turns.length-1;i++)if(!mod(turns[i][0],12)&&!mod(turns[i][1],12)){turns.splice(i-1,3,[turns[i-1][0]+turns[i+1][0],turns[i-1][1]+turns[i+1][1]]);i=0}
+  const inv=turns.slice().reverse().map(([x,y])=>[sqNorm(-x),sqNorm(-y)]),out=[];
+  inv.forEach(([x,y],i)=>{if(i)out.push('/');if(x||y)out.push(`(${x},${y})`)});return out.join(' ')}
 function clockScramble(rng){const a=()=>{const v=ri(rng,12)-5;return Math.abs(v)+(v<0?'-':'+')};
   return['UR','DR','DL','UL','U','R','D','L','ALL'].map(m=>m+a()).join(' ')+' y2 '+['U','R','D','L','ALL'].map(m=>m+a()).join(' ')}
 function ctoScramble(rng){const m=[nxnScramble(3,25,rng)];for(const t of'urfdlb'){const k=ri(rng,4);if(k)m.push(t+['','','2',"'"][k])}return m.join(' ')}
@@ -706,13 +827,15 @@ const BUILTIN=[
   {id:'pyra',name:'ピラミンクス',puz:'pyra',wca:'state',scr:r=>rsScramble('pyra',r)},
   {id:'skewb',name:'スキューブ',puz:'skewb',wca:'state',scr:r=>rsScramble('skewb',r)},
   {id:'mega',name:'メガミンクス',puz:'mega',wca:'move',scr:megaScramble},
-  {id:'sq1',name:'スクエア1',puz:'sq1',wca:'no',scr:sq1Scramble},
+  {id:'sq1',name:'スクエア1',puz:'sq1',wca:'state',scr:r=>sq1RS(r)||sq1Scramble(r)},
   {id:'clock',name:'クロック',puz:'clock',wca:'state',scr:clockScramble},
   {id:'cto',name:'CTO（コーナーターン八面体）',puz:'cto',wca:'',scr:ctoScramble},
 ];
 const rand32=()=>Math.floor(Math.random()*4294967296);
 async function makeScr(ev,seed){const rng=mulberry32(seed>>>0);
   if(ev.c3){const s=await c3scr(seed>>>0);if(s)return{s:ev.c3(s,rng),lab:ev.custom?'':'state'};return{s:nxnScramble(3,22,rng),lab:'fallback'}}
+  // square-1's solver can take a moment: let the screen update first
+  if(ev.puz==='sq1')await new Promise(r=>setTimeout(r,30));
   return{s:ev.scr(rng),lab:ev.custom?'':ev.wca}}
 const LABELS={state:'WCA方式（ランダム状態）',move:'WCA方式（規定の手数のランダム手順）',no:'WCA非公式（ランダム手順・この種目の公式方式は未対応）',fallback:'仮の手順（3×3の公式方式を準備できませんでした）'};
 const scrText=(s,pend)=>s||(pend?'手順を作っています…':'（この種目は手順なし）');
@@ -852,13 +975,14 @@ class STimer{
   cancel(){clearTimeout(this.ht);cancelAnimationFrame(this.raf);const was=this.st;this.st='idle';this.inspStart=0;this.justStopped=false;this.render();if(was==='run'&&this.o.onCancel)this.o.onCancel()}
   reset(){this.cancel();this.last=null;this.render()}
   loop(){cancelAnimationFrame(this.raf);const f=()=>{this.render();if(this.st==='run'||this.st==='insp'||((this.st==='hold'||this.st==='ready')&&this.inspStart))this.raf=requestAnimationFrame(f)};f()}
-  render(){const el=this.o.el;el.dataset.st=this.st;let t;
+  // o.el may be one element or several (the 2-player timers also draw into the full-screen view)
+  render(){let t;
     if(this.st==='run')t=this.opts.hide?'計測中':fmt(performance.now()-this.t0);
     else if(this.inspStart&&(this.st==='insp'||this.st==='hold'||this.st==='ready')){const e=(performance.now()-this.inspStart)/1000;t=e>17?'DNF':e>15?'+2':String(Math.ceil(15-e))}
     else if(this.st==='arm')t='15';
     else if(this.st==='hold'||this.st==='ready')t='0.00';
     else t=this.o.idleText?this.o.idleText():fmtSolve(this.last);
-    el.textContent=t}
+    for(const el of[].concat(this.o.el)){el.dataset.st=this.st;el.textContent=t}}
 }
 function bindTouch(area,timer){area.addEventListener('pointerdown',e=>{if(e.target.closest('button,select,input'))return;e.preventDefault();timer.down()});
   area.addEventListener('pointerup',e=>{if(e.target.closest('button,select,input'))return;e.preventDefault();timer.up()});
@@ -867,6 +991,14 @@ function bindTouch(area,timer){area.addEventListener('pointerdown',e=>{if(e.targ
   area.addEventListener('pointercancel',()=>timer.abortHold());
   area.addEventListener('contextmenu',e=>e.preventDefault())}
 const timerOpts=()=>({inspect:DB.settings.inspect,hold:+DB.settings.hold,hide:DB.settings.hide});
+// while the solo/online timer runs, a touch anywhere on the page stops it; that touch's release and click are swallowed
+// so the button under the finger does not fire
+const STOPANY={t:null,eatClick:false};
+document.addEventListener('pointerdown',e=>{const t=TAB==='timer'?mainT:TAB==='online'?onT:null;if(!t||t.st!=='run')return;
+  e.preventDefault();e.stopPropagation();t.down();STOPANY.t=t},true);
+document.addEventListener('pointerup',e=>{if(!STOPANY.t)return;e.preventDefault();e.stopPropagation();STOPANY.t.up();STOPANY.t=null;
+  STOPANY.eatClick=true;setTimeout(()=>STOPANY.eatClick=false,400)},true);
+document.addEventListener('click',e=>{if(!STOPANY.eatClick)return;STOPANY.eatClick=false;e.preventDefault();e.stopPropagation()},true);
 
 /* ================= tabs & event selects ================= */
 let TAB='timer';
@@ -926,7 +1058,13 @@ function renderNext(ts,curAo5){const r=nextAo5(ts),T=targetOf(DB.ev),el=$('#nx')
 $('#tgIn').addEventListener('input',e=>{const v=parseFloat(e.target.value);DB.settings.targets=DB.settings.targets||{};
   if(v>0)DB.settings.targets[DB.ev]=Math.round(v*100)/100;else delete DB.settings.targets[DB.ev];save();const ts=curSession().solves.map(eff);renderNext(ts,ts.length?rolling(ts,5)[ts.length-1]:null)});
 
-function renderMain(){renderSessions();renderScr();renderBk();const s=curSession(),ts=s.solves.map(eff);
+// today's solves of an event across all its sessions, in solve order
+function todayStats(ev){const k=dayKey(Date.now()),sv=[];sessionsOf(ev).forEach(s=>s.solves.forEach(v=>{if(dayKey(v.d)===k)sv.push(v)}));sv.sort((a,b)=>a.d-b.d);
+  const ts=sv.map(eff);return{n:ts.length,best:bestOf(ts),mean:basic(ts).mean,dnf:ts.filter(t=>t===Infinity).length,ao5:bestOf(rolling(ts,5)),ao12:bestOf(rolling(ts,12))}}
+function renderToday(){const t=todayStats(DB.ev),el=$('#today');
+  el.innerHTML=`<b class="small">今日の記録</b> <span class="muted small">（この種目の全セッション）</span>`+(t.n?`<div class="nxg"><span class="muted small">ベスト</span><span class="num best">${fmt(t.best)}</span><span class="muted small">平均</span><span class="num">${fmt(t.mean)}</span>`+
+    `<span class="muted small">ベストao5</span><span class="num">${fmt(t.ao5)}</span><span class="muted small">回数</span><span class="num">${t.n}${t.dnf?`<span class="muted small">（DNF ${t.dnf}）</span>`:''}</span></div>`:`<p class="muted small" style="margin:4px 0 0">今日はまだ解いていません。</p>`)}
+function renderMain(){renderSessions();renderScr();renderBk();renderToday();const s=curSession(),ts=s.solves.map(eff);
   const r5=rolling(ts,5),r12=rolling(ts,12),r100=rolling(ts,100),n=ts.length,b=basic(ts);
   const cur=a=>n?a[n-1]:null;
   $('#qs').innerHTML=`<div class="h"></div><div class="h">現在</div><div class="h">ベスト</div>`+
@@ -973,7 +1111,7 @@ function renderStats(){const ev=eventById(DB.ev),s=curSession(),ts=s.solves.map(
   const body=$('#stBody');
   const battleHtml=battleTable();
   if(!n){body.innerHTML=`<div class="card empty">このセッションにはまだ記録がありません。<br>タイマーで計測するか、「記録の移行」タブから csTimer の記録やサンプル記録を読み込めます。</div>`+battleHtml;return}
-  const b=basic(ts),dnf=ts.filter(t=>t===Infinity).length;
+  const b=basic(ts),dnf=ts.filter(t=>t===Infinity).length,td=todayStats(DB.ev);
   const rows=[['単発',1],['mo3',3],['ao5',5],['ao12',12],['ao25',25],['ao50',50],['ao100',100],['ao200',200],['ao500',500],['ao1000',1000]].filter(r=>n>=r[1]);
   const R={};rows.forEach(([l,N])=>R[l]=rolling(ts,N));
   body.innerHTML=`
@@ -981,6 +1119,10 @@ function renderStats(){const ev=eventById(DB.ev),s=curSession(),ts=s.solves.map(
     <div class="tile"><span>回数</span><b>${n}</b></div><div class="tile"><span>ベスト</span><b>${fmt(bestOf(ts))}</b></div>
     <div class="tile"><span>平均（DNF除く）</span><b>${fmt(b.mean)}</b></div><div class="tile"><span>中央値</span><b>${fmt(b.med)}</b></div>
     <div class="tile"><span>ばらつき（標準偏差）</span><b>${b.sd==null?'–':(b.sd/1000).toFixed(2)+'s'}</b></div><div class="tile"><span>DNF率</span><b>${(dnf/n*100).toFixed(1)}%</b></div>
+  </div></div>
+  <div class="card"><h2>今日の記録 <span class="muted small" style="font-weight:400">（この種目の全セッション）</span></h2><div class="tiles">
+    <div class="tile"><span>今日のベスト</span><b>${fmt(td.best)}</b></div><div class="tile"><span>今日の平均（DNF除く）</span><b>${fmt(td.mean)}</b></div>
+    <div class="tile"><span>今日のベスト ao5</span><b>${fmt(td.ao5)}</b></div><div class="tile"><span>今日のベスト ao12</span><b>${fmt(td.ao12)}</b></div><div class="tile"><span>今日の回数</span><b>${td.n}</b></div>
   </div></div>
   <div class="sgrid">
     <div class="card"><h2>平均の記録</h2><div class="tbl"><table><thead><tr><th>種類</th><th>現在</th><th>ベスト</th><th>ベストの位置</th></tr></thead><tbody>
@@ -1032,27 +1174,54 @@ function lbNewRound(){const r={scr:'',pend:true,lab:'',a:null,b:null},id=LB.id;L
   makeScr(eventById(LB.ev),rand32()).then(x=>{r.scr=x.s;r.lab=x.lab;r.pend=false;if(LB.id===id&&lbCur()===r&&TAB==='local')renderLocal()})}
 const lbCur=()=>LB.rounds[LB.rounds.length-1];
 const lbDone=r=>r.a&&r.b;
-const LT=[0,1].map(k=>new STimer({el:$('#lt'+(k+1)),opts:()=>({inspect:DB.settings.inspect,hold:+DB.settings.hold,hide:false}),
+// a result is {t,p,ok}: ok turns true once that player picks OK/+2/DNF; when both have, the next round starts by itself 2 s later
+const LT=[0,1].map(k=>new STimer({el:[$('#lt'+(k+1)),$('#ft'+(k+1))],opts:()=>({inspect:DB.settings.inspect,hold:+DB.settings.hold,hide:false}),
   locked:()=>!lbCur()||!!lbCur()[k?'b':'a'],
-  onStop:({t,p})=>{lbCur()[k?'b':'a']={t,p};lbRecord();renderLocal()},
+  onStart:()=>renderLocal(),onCancel:()=>renderLocal(),
+  onStop:({t,p})=>{lbCur()[k?'b':'a']={t,p,ok:false,at:performance.now()};lbRecord();renderLocal()},
   idleText:()=>{const c=lbCur(),r=c&&c[k?'b':'a'];return r?fmtSolve(r):'0.00'}}));
-LT.forEach((t,k)=>bindTouch($('#pl'+(k+1)),t));
+// each panel / each half of the full-screen view is that player's touch area; while their timer runs, any touch in it stops it
+LT.forEach((t,k)=>{bindTouch($('#pl'+(k+1)),t);bindTouch($('#fh'+(k+1)),t);
+  // hold / inspection changes do not re-render on their own; refresh the hint text after each touch
+  ['pointerdown','pointerup'].forEach(ev=>$('#fh'+(k+1)).addEventListener(ev,()=>setTimeout(renderLocal,0)))});
 function lbRecord(){const ev=eventById(LB.ev);LB.rounds.forEach((r,i)=>{if(!lbDone(r))return;
   upsertBattle({k:'L'+LB.id+':'+i,d:Date.now(),ev:ev.name,mode:'local',a:{n:DB.settings.p1,t:r.a.p===-1?-1:r.a.t+r.a.p},b:{n:DB.settings.p2,t:r.b.p===-1?-1:r.b.t+r.b.p}})})}
-function lbNext(){if(!lbDone(lbCur()))return;lbNewRound();LT.forEach(t=>t.reset());renderLocal()}
+const lbStop=()=>{clearTimeout(LB.auto);LB.auto=0};
+function lbNext(){const r=lbCur();if(!lbDone(r))return;lbStop();r.a.ok=r.b.ok=true;lbNewRound();LT.forEach(t=>t.reset());renderLocal()}
+function lbRestart(){lbStop();LB.id=uid();LB.rounds=[];lbNewRound();LT.forEach(t=>t.reset());renderLocal()}
 $('#lbNext').addEventListener('click',lbNext);
-$('#lbReset').addEventListener('click',()=>{LB.id=uid();LB.rounds=[];lbNewRound();LT.forEach(t=>t.reset());renderLocal();toast('新しい対戦を始めました')});
-$('#lbEv').addEventListener('change',e=>{LB.ev=e.target.value;LB.id=uid();LB.rounds=[];lbNewRound();LT.forEach(t=>t.reset());renderLocal()});
+$('#lbReset').addEventListener('click',()=>{lbRestart();toast('新しい対戦を始めました')});
+$('#lbEv').addEventListener('change',e=>{LB.ev=e.target.value;lbRestart()});
 ['p1n','p2n'].forEach((id,k)=>$('#'+id).addEventListener('change',e=>{DB.settings[k?'p2':'p1']=e.target.value.trim().slice(0,20)||('プレイヤー'+(k+1));save();renderLocal()}));
-document.querySelector('#tab-local .duo').addEventListener('click',e=>{const b=e.target.closest('button[data-lp]');if(!b)return;const r=lbCur(),k=b.dataset.lp==='1'?'b':'a';
-  if(r[k]){r[k].p=+b.dataset.pen;lbRecord();LT[+b.dataset.lp].render();renderLocal()}});
+// the touch that stopped the timer must not also press the button that appears under the finger
+function lbPen(k,pen){const r=lbCur(),key=k?'b':'a';if(!r[key]||r[key].ok||performance.now()-r[key].at<400)return;r[key].p=pen;r[key].ok=true;lbRecord();
+  if(lbDone(r)&&r.a.ok&&r.b.ok&&!LB.auto)LB.auto=setTimeout(()=>{LB.auto=0;if(lbCur()===r)lbNext()},2000);renderLocal()}
+document.querySelector('#tab-local .duo').addEventListener('click',e=>{const b=e.target.closest('button[data-lp]');if(b)lbPen(+b.dataset.lp,+b.dataset.pen)});
+$('#lbFs').addEventListener('click',e=>{const b=e.target.closest('button[data-fk]');if(b)lbPen(+b.dataset.fk,+b.dataset.pen)});
+// full screen: the browser's own full-screen mode where allowed; the fixed overlay works either way
+function lbFull(on){$('#lbFs').hidden=!on;document.body.classList.toggle('fsOn',on);
+  try{if(on&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});else if(!on&&document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
+  renderLocal()}
+$('#lbFull').addEventListener('click',()=>lbFull(true));
+$('#fsExit').addEventListener('click',()=>{LT.forEach(t=>t.cancel());lbFull(false)});
+function lbHint(k,r,res){const t=LT[k];if(t.st==='run')return'どこを触っても止まります';if(t.holding)return t.st==='ready'?'離すとスタート':'そのまま長押し…';
+  if(t.st==='insp')return'観察中：長押し → 離してスタート';if(r.pend)return'手順を作っています…';
+  if(!res)return DB.settings.inspect?'タップで観察（15秒）を始める':'長押し → 緑になったら離してスタート';
+  if(!res.ok)return'結果を選んでください';const o=r[k?'a':'b'];if(!o||!o.ok)return'相手を待っています';return'2秒後に次のラウンド';}
 function renderLocal(){const ev=eventById(LB.ev),r=lbCur();$('#p1n').value=DB.settings.p1;$('#p2n').value=DB.settings.p2;$('#pl1n').textContent=DB.settings.p1;$('#pl2n').textContent=DB.settings.p2;
   $('#lbRound').textContent=ev.name+'　ラウンド '+LB.rounds.length;setScrText($('#lbScr'),scrText(r.scr,r.pend),ev);$('#lbLab').textContent=LABELS[r.lab]||'';$('#lbDiag').innerHTML=r.scr?diagram(ev,r.scr):'';
+  $('#lbSum').textContent=`${ev.name}・${DB.settings.p1} vs ${DB.settings.p2}`;
   let w1=0,w2=0;const rows=LB.rounds.map((x,i)=>{if(!lbDone(x))return'';const a=eff(x.a),b=eff(x.b);if(a<b)w1++;else if(b<a)w2++;
     return`<tr><td class="t">${i+1}</td><td class="${a<b?'best':''}">${fmtSolve(x.a)}</td><td class="${b<a?'best':''}">${fmtSolve(x.b)}</td><td class="t">${a<b?esc(DB.settings.p1):b<a?esc(DB.settings.p2):'引き分け'}</td></tr>`}).reverse().join('');
   $('#lbScore').textContent=w1+' - '+w2;$('#lbNext').disabled=!lbDone(r);
-  const done=lbDone(r),a=r.a&&eff(r.a),b=r.b&&eff(r.b);$('#pl1').classList.toggle('win',!!done&&a<b);$('#pl2').classList.toggle('win',!!done&&b<a);
+  const done=lbDone(r),a=r.a&&eff(r.a),b=r.b&&eff(r.b);
   $('#lbHist').innerHTML=rows?`<table><thead><tr><th>R</th><th>${esc(DB.settings.p1)}</th><th>${esc(DB.settings.p2)}</th><th>勝者</th></tr></thead><tbody>${rows}</tbody></table>`:'<p class="muted" style="margin:0">2人とも解き終わると、ここに結果が並びます。</p>';
+  [0,1].forEach(k=>{const res=r[k?'b':'a'],win=!!done&&(k?b<a:a<b),pen=!!res&&!res.ok&&LT[k].st!=='run',n=k+1;
+    $('#pl'+n).classList.toggle('win',win);$('#pl'+n+' .pens').hidden=!pen;
+    $('#fh'+n).classList.toggle('win',win);$('#fh'+n+' .fpen').hidden=!pen;$('#fn'+n).textContent=DB.settings[k?'p2':'p1'];$('#fw'+n).textContent=(k?w2:w1)+'勝';
+    setScrText($('#fs'+n),scrText(r.scr,r.pend),ev);$('#fd'+n).innerHTML=r.scr?diagram(ev,r.scr):'';$('#fi'+n).textContent=lbHint(k,r,res);
+    if(LT[k].st==='run')$('#fh'+n).dataset.run='';else delete $('#fh'+n).dataset.run});
+  $('#fmScore').textContent=w1+' - '+w2;$('#fmRound').textContent=ev.name+'・ラウンド '+LB.rounds.length;
   LT.forEach(t=>t.render())}
 
 /* ================= online battle ================= */
@@ -1063,19 +1232,52 @@ const onRes=()=>ON.raw.map(r=>r.p===-1?-1:r.t+r.p);
 function onScramble(r){if(!ON.ev)return{s:'',pend:false,lab:''};const k=ON.code+'#'+r;if(!ON.scrs[k]){const o=ON.scrs[k]={s:'',pend:true,lab:''};
   makeScr(ON.ev,hashStr(k)).then(x=>{o.s=x.s;o.lab=x.lab;o.pend=false;if(TAB==='online')renderOnline()})}return ON.scrs[k]}
 function onPresence(){if(!ON.nr)return;ON.nr.presence({nick:DB.settings.nick||'ゲスト',def:ON.def,res:onRes(),st:ON.st}).catch(()=>{})}
+// OK / +2 / DNF only show after a stop (until the next start), so a stray touch cannot change a result mid-solve
 const onT=new STimer({el:$('#onDisp'),opts:timerOpts,locked:()=>!ON.ev||ON.raw.length>=150,
-  onStart:()=>{ON.st='solving';onPresence()},onCancel:()=>{ON.st='idle';onPresence()},
+  onStart:()=>{ON.st='solving';$('#onPen').hidden=true;onPresence()},onCancel:()=>{ON.st='idle';onPresence()},
   onStop:({t,p})=>{ON.raw.push({t,p});ON.st='idle';onPresence();renderOnline()},
   idleText:()=>ON.raw.length?fmtSolve(ON.raw[ON.raw.length-1]):'0.00'});
 bindTouch($('#onArea'),onT);
+
+/* Rooms: inside claude.ai the page's 'room' capability; anywhere else (the public site) PeerJS, i.e. a direct WebRTC link between the
+   browsers found through the free PeerJS cloud server, no sign-in. The PeerJS room creator relays: everyone sends it their presence
+   and it sends everyone the full list. Both give onEnter the same small interface: presence(obj), onPeers(cb,onErr), leave(). */
+const PEERJS='https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js';
+let peerLib=null;
+const loadPeer=()=>peerLib||(peerLib=new Promise((ok,ng)=>{if(window.Peer)return ok(window.Peer);const s=document.createElement('script');s.src=PEERJS;
+  s.onload=()=>window.Peer?ok(window.Peer):ng({code:'nolib'});s.onerror=()=>{peerLib=null;s.remove();ng({code:'nolib'})};document.head.appendChild(s)}));
+const peerId=code=>'cubelab-'+code.replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+async function peerJoin(code,host){const Peer=await loadPeer();
+  const me={pres:null,cb:null,err:null,list:[]},members=new Map(),clip=p=>p&&typeof p==='object'?p:null;
+  const peer=await new Promise((ok,ng)=>{const p=host?new Peer(peerId(code)):new Peer();const to=setTimeout(()=>{p.destroy();ng({code:'timeout'})},20000);
+    p.on('open',()=>{clearTimeout(to);ok(p)});p.on('error',e=>{clearTimeout(to);p.destroy();ng({code:e&&e.type||'error'})})});
+  const emit=()=>{if(me.cb)me.cb({peers:me.list.slice(0,8).map(x=>({sameTab:x.id===peer.id,kind:'viewer',presence:clip(x.p)}))})};
+  let send;
+  if(host){const relay=()=>{me.list=[{id:peer.id,p:me.pres},...[...members].map(([id,m])=>({id,p:m.p}))];const msg={t:'peers',list:me.list};members.forEach(m=>{try{m.c.send(msg)}catch(e){}});emit()};
+    peer.on('connection',c=>{if(members.size>=7){c.on('open',()=>c.close());return}
+      c.on('open',()=>{members.set(c.peer,{c,p:null});relay()});c.on('data',d=>{const m=members.get(c.peer);if(m&&d&&d.t==='pres'){m.p=clip(d.p);relay()}});
+      c.on('close',()=>{members.delete(c.peer);relay()});c.on('error',()=>{members.delete(c.peer);relay()})});
+    peer.on('error',e=>{if(me.err&&e&&e.type!=='peer-unavailable')me.err({code:e.type})});
+    send=relay}
+  else{const c=await new Promise((ok,ng)=>{const c=peer.connect(peerId(code),{reliable:true});const to=setTimeout(()=>ng({code:'peer-unavailable'}),15000);
+      c.on('open',()=>{clearTimeout(to);ok(c)});peer.on('error',e=>{clearTimeout(to);ng({code:e&&e.type||'error'})})}).catch(e=>{peer.destroy();throw e});
+    c.on('data',d=>{if(d&&d.t==='peers'&&Array.isArray(d.list)){me.list=d.list.filter(x=>x&&typeof x.id==='string');emit()}});
+    c.on('close',()=>{if(me.err)me.err({code:'host-left'})});
+    send=()=>{try{c.send({t:'pres',p:me.pres})}catch(e){}}}
+  return{presence:async p=>{me.pres=p;send()},onPeers:(cb,err)=>{me.cb=cb;me.err=err;emit()},leave:async()=>{me.cb=me.err=null;peer.destroy()}}}
+const ONERR={'unavailable-id':'このコードのルームはもうあります。もう一度「作成」を押してください。','peer-unavailable':'そのコードのルームが見つかりません。コードと、作った人がページを開いたままかを確かめてください。',
+  nolib:'オンライン対戦の部品を読み込めませんでした。通信状態を確かめてください。',timeout:'接続サーバーにつながりませんでした。少し待ってもう一度試してください。',
+  'host-left':'ルームを作った人が退出したため、接続が切れました。','browser-incompatible':'このブラウザはオンライン対戦（WebRTC）に対応していません。'};
 async function onEnter(code,def){const err=$('#onErr');err.textContent='';code=code.trim().toLowerCase();
   if(!/^[a-z0-9][a-z0-9_.-]{0,47}$/.test(code)){err.textContent='ルームコードは半角の英小文字・数字で入力してください。';return}
   const nick=$('#onNick').value.trim().slice(0,20);if(!nick){err.textContent='ニックネームを入れてください。';$('#onNick').focus();return}DB.settings.nick=nick;save();
-  const room=await cap('room');if(!room){err.textContent='オンライン対戦は claude.ai 上でこのページを開いたとき（サインイン中）だけ使えます。';return}
-  try{ON.nr=await room.join(code)}catch(e){err.textContent='ルームに入れませんでした（'+(e&&e.code||'error')+'）。少し待ってもう一度試してください。';return}
+  const room=await cap('room');err.textContent='接続しています…';
+  try{ON.nr=room?await room.join(code):await peerJoin(code,!!def)}
+  catch(e){const c=e&&e.code||'error';err.textContent=ONERR[c]||'ルームに入れませんでした（'+c+'）。少し待ってもう一度試してください。';return}
+  err.textContent='';
   ON.code=code;ON.def=def;ON.scrs={};ON.ev=def?resolveEvent(def):null;ON.raw=[];ON.st='idle';onT.reset();
   ON.nr.onPeers(ch=>{ON.peers=ch.peers;if(!ON.ev){const p=ch.peers.find(x=>!x.sameTab&&x.presence&&x.presence.def);if(p){ON.def=cleanDef(p.presence.def);ON.ev=resolveEvent(ON.def);onPresence()}}onRecord();renderOnline()},
-    e=>{$('#onErr').textContent='接続が切れました（'+e.code+'）。';});
+    e=>{const m=ONERR[e&&e.code]||'接続が切れました（'+(e&&e.code)+'）。「退出」してから入り直してください。';$('#onErr').textContent=m;toast(m)});
   onPresence();renderOnline()}
 $('#onCreate').addEventListener('click',()=>{const id=$('#onEv').value;onEnter('cl-'+Math.random().toString(36).slice(2,8),defOf(id))});
 $('#onJoin').addEventListener('click',()=>onEnter($('#onCode').value,null));
@@ -1100,6 +1302,7 @@ function renderOnline(){$('#onNick').value=DB.settings.nick||'';$('#onEv').inner
     if(full){const m=Math.min(...vals);if(vals.filter(v=>v===m).length===1&&m!==Infinity){bi=vals.indexOf(m);wins[bi]++}}
     rows=`<tr><td class="t">${i+1}</td>${vals.map((v,k)=>`<td class="${k===bi?'best':''}">${v==null?'<span class="muted">…</span>':fmt(v)}</td>`).join('')}</tr>`+rows}
   $('#onScore').textContent=cols.length>1?wins.join(' - '):'';
+  $('#onPen').hidden=!(ON.raw.length&&onT.st==='done');
   $('#onTable').innerHTML=max?`<table><thead><tr><th>R</th>${cols.map(c=>`<th>${esc(c.n)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`:'<p class="muted" style="margin:0">解き終わると結果がここに並びます。</p>';onT.render()}
 
 /* ================= WCA ================= */
@@ -1113,9 +1316,25 @@ function trimRecs(o){const pick=x=>{const r={};WCAEV.forEach(([,w])=>{const e=x&
 function trimPerson(o){const p=o.person||{},pr={};WCAEV.forEach(([,w])=>{const e=o.personal_records&&o.personal_records[w];if(!e)return;
     const g=x=>x&&{best:cs2ms(x.best),wr:x.world_rank,nr:x.country_rank,cr:x.continent_rank};pr[w]={s:g(e.single),a:g(e.average)}});
   const av=p.avatar&&typeof p.avatar.thumb_url==='string'&&p.avatar.thumb_url.startsWith('https://avatars.worldcubeassociation.org/')&&!p.avatar.is_default?p.avatar.thumb_url:'';
-  return{id:String(p.wca_id||p.id||''),name:String(p.name||''),country:String(p.country&&p.country.id||''),countryName:String(p.country&&p.country.name||''),comps:+o.competition_count||0,av,pr}}
+  return{id:String(p.wca_id||p.id||''),name:String(p.name||''),country:String(p.country&&p.country.id||''),iso2:String(p.country&&p.country.iso2||'').slice(0,2),countryName:String(p.country&&p.country.name||''),comps:+o.competition_count||0,av,pr}}
 function practiceBest(ev,N){let s=null,a=null;sessionsOf(ev).forEach(x=>{const ts=x.solves.map(eff),b=bestOf(ts),r=bestOf(rolling(ts,N));if(b!=null&&b!==Infinity&&(s==null||b<s))s=b;if(r!=null&&r!==Infinity&&(a==null||r<a))a=r});return{s,a}}
 const diff=(a,b)=>a==null||b==null?'–':(a<=b?'−':'+')+fmt(Math.abs(a-b));
+/* rank equivalent: where a practice best would place in the chosen country's WCA ranking. Source: the unofficial WCA REST API
+   (rebuilt daily from WCA's results export, readable without sign-in); each list holds a country's top 1000 per event.
+   The lists (only the times) live under their own storage key, apart from the records. */
+const RANK_API='https://raw.githubusercontent.com/robiningelbrecht/wca-rest-api/refs/heads/v1/',RKKEY='cubelab.wcarank';
+const RK={loaded:false,iso:'',at:0,lists:{}};
+async function rankLoad(){if(RK.loaded)return;RK.loaded=true;try{const o=JSON.parse(await getRaw(RKKEY)||'null');if(o&&o.lists)Object.assign(RK,o,{loaded:true})}catch(e){}}
+async function rankIso(country){if(DB.wca.person&&DB.wca.person.country===country&&DB.wca.person.iso2)return DB.wca.person.iso2;if(country==='Japan')return'JP';
+  const r=await fetch(RANK_API+'countries.json');if(!r.ok)throw new Error('http '+r.status);const c=((await r.json()).items||[]).find(x=>x.name===country||x.name.replace(/ /g,'')===country.replace(/ /g,''));return c?c.iso2Code:''}
+async function rankFetch(country){const iso=await rankIso(country);if(!iso)throw new Error('nocountry');const lists={};
+  await Promise.all(WCAEV.flatMap(([,w])=>[['s','single'],['a','average']].map(async([k,t])=>{try{const r=await fetch(`${RANK_API}rank/${iso}/${t}/${w}.json`);if(!r.ok)return;
+    const j=await r.json(),b=(j.items||[]).map(x=>+x.best*10).filter(v=>v>0).sort((a,b)=>a-b);if(b.length)lists[w+':'+k]={b,n:+j.total||b.length}}catch(e){}})));
+  if(!Object.keys(lists).length)throw new Error('norank');Object.assign(RK,{iso,country,at:Date.now(),lists});putRaw(RKKEY,JSON.stringify({iso,country,at:RK.at,lists})).catch(()=>{})}
+// rank = 1 + number of people strictly faster; past the end of a capped list only "below place N" is known
+function rankOf(w,k,mine){const L=RK.country===DB.wca.country&&RK.lists[w+':'+k];if(!L||mine==null||mine===Infinity)return null;let lo=0,hi=L.b.length;
+  while(lo<hi){const m=(lo+hi)>>1;if(L.b[m]<mine)lo=m+1;else hi=m}return lo>=L.b.length&&L.b.length<L.n?{over:L.b.length,n:L.n}:{r:lo+1,n:L.n}}
+const rankCell=x=>!x?'–':x.over?`${x.over}位より下<div class="muted small">${x.n}人中</div>`:`<b>${x.r}位</b><div class="muted small">${x.n}人中・上位${Math.max(.1,Math.round(x.r/x.n*1000)/10)}%</div>`;
 function renderWCA(){const W=DB.wca;$('#wcaId').value=W.id||'';
   const cs=W.rec?Object.keys(W.rec.nr).sort():['Japan'];if(!cs.includes(W.country))cs.unshift(W.country);
   $('#wcaCountry').innerHTML=cs.map(c=>`<option value="${esc(c)}"${c===W.country?' selected':''}>${esc(c==='Japan'?'日本 (Japan)':c)}</option>`).join('');
@@ -1123,20 +1342,24 @@ function renderWCA(){const W=DB.wca;$('#wcaId').value=W.id||'';
   if(P)pc.innerHTML=`<div class="row" style="gap:14px">${P.av?`<img src="${esc(P.av)}" alt="" width="56" height="56" style="border-radius:50%;object-fit:cover" onerror="this.remove()">`:''}<div><div style="font-weight:700;font-size:17px">${esc(P.name)}</div><div class="muted small">${esc(P.id)}・${esc(P.countryName)}・大会出場 ${P.comps}回</div><a class="small" href="https://www.worldcubeassociation.org/persons/${encodeURIComponent(P.id)}" target="_blank" rel="noopener">WCA のプロフィールを開く</a></div></div>`;
   const nr=W.rec&&W.rec.nr[W.country]||{},wr=W.rec&&W.rec.wr||{},cn=W.country==='Japan'?'日本':W.country;
   if(!W.rec&&!P){$('#wcaTable').innerHTML='<div class="empty">「WCA から取得」を押すと、ここに公式記録との比較が出ます。</div>';return}
+  if(!RK.loaded)rankLoad().then(()=>{if(TAB==='wca')renderWCA()});
   let rows='';WCAEV.forEach(([ev,w,N])=>{const pb=practiceBest(ev,N),pr=P&&P.pr[w];
     [['単発','s',pb.s],[N===3?'mo3':'ao5','a',pb.a]].forEach(([lab,k,mine],j)=>{const off=pr&&pr[k],o=off&&off.best,n=nr[w]&&nr[w][k],x=wr[w]&&wr[w][k];if(mine==null&&o==null&&n==null&&x==null)return;
-      rows+=`<tr><td class="t">${j?'':esc(BMAP[ev].name)}</td><td class="t muted">${lab}</td><td class="${mine!=null&&o!=null&&mine<o?'best':''}">${fmt(mine)}</td><td>${fmt(o)}${off&&off.nr?`<div class="muted small">国内${off.nr}位・世界${off.wr}位</div>`:''}</td><td>${diff(mine,o)}</td><td>${fmt(n)}</td><td>${diff(mine,n)}</td><td>${fmt(x)}</td><td>${diff(mine,x)}</td></tr>`})});
-  $('#wcaTable').innerHTML=`<table><thead><tr><th>種目</th><th></th><th>練習ベスト</th><th>公式ベスト${P?'':'（ID未入力）'}</th><th>公式との差</th><th>${esc(cn)}記録</th><th>差</th><th>世界記録</th><th>差</th></tr></thead><tbody>${rows}</tbody></table>`;
+      rows+=`<tr><td class="t">${j?'':esc(BMAP[ev].name)}</td><td class="t muted">${lab}</td><td class="${mine!=null&&o!=null&&mine<o?'best':''}">${fmt(mine)}</td><td>${rankCell(rankOf(w,k,mine))}</td><td>${fmt(o)}${off&&off.nr?`<div class="muted small">国内${off.nr}位・世界${off.wr}位</div>`:''}</td><td>${diff(mine,o)}</td><td>${fmt(n)}</td><td>${diff(mine,n)}</td><td>${fmt(x)}</td><td>${diff(mine,x)}</td></tr>`})});
+  $('#wcaTable').innerHTML=`<table><thead><tr><th>種目</th><th></th><th>練習ベスト</th><th>練習ベストの${esc(cn)}順位</th><th>公式ベスト${P?'':'（ID未入力）'}</th><th>公式との差</th><th>${esc(cn)}記録</th><th>差</th><th>世界記録</th><th>差</th></tr></thead><tbody>${rows}</tbody></table>`;
   if(W.at)$('#wcaMsg').textContent='最終取得：'+new Date(W.at).toLocaleString('ja-JP')+'（もう一度押すと最新にします）'}
 $('#wcaCountry').addEventListener('change',e=>{DB.wca.country=e.target.value;save();renderWCA()});
 $('#wcaFetch').addEventListener('click',async()=>{const id=$('#wcaId').value.trim().toUpperCase(),msg=$('#wcaMsg'),btn=$('#wcaFetch');
   if(id&&!/^\d{4}[A-Z]{4}\d{2}$/.test(id)){msg.textContent='WCA ID は「2015TANA01」のように 数字4桁＋英字4文字＋数字2桁 です。';return}
   btn.disabled=true;msg.textContent='WCA から取得しています…';
   try{const[rec,per]=await Promise.all([wcaGet('records'),id?wcaGet('persons/'+id):null]);
-    DB.wca.rec=trimRecs(rec);DB.wca.id=id;DB.wca.person=per?trimPerson(per):null;if(DB.wca.person&&DB.wca.person.country&&!DB.wca.countryTouched)DB.wca.country=DB.wca.person.country;DB.wca.at=Date.now();save();renderWCA();toast('WCA の記録を取得しました')}
+    DB.wca.rec=trimRecs(rec);DB.wca.id=id;DB.wca.person=per?trimPerson(per):null;if(DB.wca.person&&DB.wca.person.country&&!DB.wca.countryTouched)DB.wca.country=DB.wca.person.country;DB.wca.at=Date.now();save();renderWCA();
+    msg.textContent='ランキングを取得しています…';let rk=true;try{await rankFetch(DB.wca.country)}catch(e){rk=false}renderWCA();
+    if(!rk)msg.textContent='公式記録は取得できましたが、順位換算用のランキングを取得できませんでした。もう一度押してください。';toast('WCA の記録を取得しました')}
   catch(e){msg.textContent=e.message==='notfound'?'その WCA ID の選手が見つかりませんでした。':'WCA に接続できませんでした。通信状態を確かめてもう一度試してください（表示環境によっては外部サイトへの接続が止められていることがあります）。'}
   finally{btn.disabled=false}});
-$('#wcaCountry').addEventListener('change',()=>{DB.wca.countryTouched=true;save()});
+$('#wcaCountry').addEventListener('change',async()=>{DB.wca.countryTouched=true;save();const c=DB.wca.country,msg=$('#wcaMsg');if(RK.country===c)return;
+  msg.textContent='ランキングを取得しています…';try{await rankFetch(c);msg.textContent='順位換算を「'+c+'」のランキングにしました。'}catch(e){msg.textContent='この国のランキングを取得できませんでした。'}renderWCA()});
 
 /* ================= data tab ================= */
 function renderData(){$('#ceBase').innerHTML=`<option value="nxn">N×N キューブ（サイズを指定）</option>`+BUILTIN.map(e=>`<option value="${e.id}">${esc(e.name)} と同じ手順</option>`).join('')+`<option value="none">手順なし（タイマーだけ使う）</option>`;
@@ -1273,6 +1496,7 @@ document.addEventListener('keyup',e=>{if(isField(e.target))return;
 if(window===window.top&&/\b(Line|FBAN|FBAV|Instagram)\//i.test(navigator.userAgent)){const n=$('#inappNote'),u=new URL(location.href);u.searchParams.set('openExternalBrowser','1');
   n.innerHTML=`アプリの中のブラウザで開いています。ここでは記録が消えることがあるので、<a href="${esc(u.href)}" target="_blank" rel="noopener">いつものブラウザで開いて</a>使ってください。`;n.hidden=false}
 c3init();
+cap('room').then(r=>{if(!r)$('#onVia').textContent='（このページでは、サインインなしでブラウザ同士を直接つないで対戦します）'});
 loadStore().then(()=>{LB.ev=DB.ev;lbNewRound();fillEventSelects();nextMain();renderMain();if(TAB!=='timer')setTab(TAB);askPersist()});
 </script>
 
