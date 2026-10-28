@@ -202,6 +202,12 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
 .avrow .num{text-align:right}
 .avrow.cut .tm{color:var(--muted)}
 .avrow .sc{font-family:var(--f-mono);font-size:12px;color:var(--muted);word-break:break-word;white-space:pre-line}
+.shopg{padding:10px 0;border-bottom:1px solid var(--line)}
+.shopg:last-child{border-bottom:none}
+.shopg.cur{background:var(--accent-weak);border-radius:10px;padding:10px 12px;border-bottom:none;margin-bottom:4px}
+.shopg h3{margin:0 0 6px;font-size:15px}
+.shopg .curtag{font-size:12px;color:var(--accent);font-weight:700;margin-left:6px}
+.shopa{display:inline-block;margin:4px 6px 0 0;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--accent);text-decoration:none;font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -216,6 +222,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
       <button role="tab" data-tab="wca" aria-selected="false">WCA記録</button>
       <button role="tab" data-tab="move" aria-selected="false">記録の移行</button>
       <button role="tab" data-tab="data" aria-selected="false">種目</button>
+      <button role="tab" data-tab="shop" aria-selected="false">キューブを探す</button>
     </nav>
     <div class="evpick"><label for="evSel">種目</label><select id="evSel"></select><button id="evAdd" class="ghost" title="種目を追加">＋</button></div>
   </div>
@@ -362,6 +369,16 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
         <p class="muted" style="margin:0">上の「種目」から選べるようになり、2人対戦・オンライン対戦でも使えます。種目を削除しても、その種目の記録は残ります。</p>
         <p class="muted" style="margin:10px 0 0">記録の書き出し・読み込み・csTimer からの移行は「記録の移行」タブにあります。</p>
       </div>
+    </div>
+  </section>
+
+  <!-- SHOP (Amazon search links, same words as events.html) -->
+  <section class="tab" id="tab-shop" hidden>
+    <div class="card">
+      <h2>キューブを探す</h2>
+      <p class="muted small" style="margin:0 0 6px">Amazon の検索結果を新しいタブで開きます。いま選んでいる種目がいちばん上に出ます。</p>
+      <div id="shopList"></div>
+      <p class="note small" style="margin-top:12px">当サイトはAmazonアソシエイトとして適格販売により収入を得ています。価格や在庫は販売ページでご確認ください。</p>
     </div>
   </section>
 
@@ -1003,13 +1020,38 @@ document.addEventListener('click',e=>{if(!STOPANY.eatClick)return;STOPANY.eatCli
 /* ================= tabs & event selects ================= */
 let TAB='timer';
 function setTab(t){TAB=t;$$('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));$$('.tab[id^=tab-]').forEach(s=>s.hidden=s.id!=='tab-'+t);
-  if(t==='stats')renderStats();if(t==='local')renderLocal();if(t==='online')renderOnline();if(t==='wca')renderWCA();if(t==='move')renderMove();if(t==='data')renderData()}
+  if(t==='stats')renderStats();if(t==='local')renderLocal();if(t==='online')renderOnline();if(t==='wca')renderWCA();if(t==='move')renderMove();if(t==='data')renderData();if(t==='shop')renderShop()}
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.tab)});
 function eventOptions(sel){const cu=DB.custom.map(c=>`<option value="${esc(c.id)}"${c.id===sel?' selected':''}>${esc(c.name)}</option>`).join('');
   return BUILTIN.map(e=>`<option value="${e.id}"${e.id===sel?' selected':''}>${esc(e.name)}</option>`).join('')+(cu?`<optgroup label="追加した種目">${cu}</optgroup>`:'')}
 function fillEventSelects(){if(!BMAP[DB.ev]&&!DB.custom.some(c=>c.id===DB.ev))DB.ev='333';$('#evSel').innerHTML=eventOptions(DB.ev);
   $('#onEv').innerHTML=eventOptions(DB.ev);$('#lbEv').innerHTML=eventOptions(LB.ev)}
-$('#evSel').addEventListener('change',e=>{DB.ev=e.target.value;save();nextMain();mainT.reset();renderMain();if(TAB==='stats')renderStats()});
+$('#evSel').addEventListener('change',e=>{DB.ev=e.target.value;save();nextMain();mainT.reset();renderMain();if(TAB==='stats')renderStats();if(TAB==='shop')renderShop()});
+
+/* ================= shop tab: Amazon search links (same words and URL rules as events.html / site.js) ================= */
+// puz: which events a group belongs to (custom events follow their base puzzle). links: [search words, button text]
+const SHOP=[
+  {puz:'nxn:3',title:'3×3（片手・目隠しも）',links:[['スピードキューブ 3x3 磁石','3×3 磁石入りを探す'],['スピードキューブ 3x3 初心者','初心者向けを探す']]},
+  {puz:'nxn:2',title:'2×2',links:[['スピードキューブ 2x2 磁石','2×2 を探す']]},
+  {puz:'nxn:4',title:'4×4',links:[['スピードキューブ 4x4 磁石','4×4 を探す']]},
+  {puz:'nxn:5',title:'5×5',links:[['スピードキューブ 5x5 磁石','5×5 を探す']]},
+  {puz:'nxn:6',title:'6×6',links:[['スピードキューブ 6x6','6×6 を探す']]},
+  {puz:'nxn:7',title:'7×7',links:[['スピードキューブ 7x7','7×7 を探す']]},
+  {puz:'pyra',title:'ピラミンクス',links:[['ピラミンクス 磁石','ピラミンクスを探す']]},
+  {puz:'skewb',title:'スキューブ',links:[['スキューブ 磁石','スキューブを探す']]},
+  {puz:'mega',title:'メガミンクス',links:[['メガミンクス 磁石','メガミンクスを探す']]},
+  {puz:'sq1',title:'スクエア1',links:[['スクエア1 キューブ','スクエア1を探す']]},
+  {puz:'clock',title:'クロック',links:[['ルービッククロック 競技用','クロックを探す']]},
+  {puz:'cto',title:'CTO（コーナーターン八面体）',links:[['CTO コーナーターン 八面体 キューブ','CTO を探す']]},
+  {puz:'',title:'潤滑剤・タイマー・マット',links:[['スピードキューブ 潤滑剤','潤滑剤を探す'],['キューブ タイマー マット','大会用タイマー・マットを探す']]},
+];
+function amzUrl(words){const S=window.SITE||{amazonTag:'cubelabtimer-22'},EN=document.documentElement.lang==='en';
+  const u=new URL(EN?'https://www.amazon.com/s':'https://www.amazon.co.jp/s'),tag=EN?S.amazonTagUS:S.amazonTag;
+  u.searchParams.set('k',words);if(tag)u.searchParams.set('tag',tag);return u.toString()}
+function renderShop(){const puz=eventById(DB.ev).puz,cur=SHOP.find(g=>g.puz&&g.puz===puz);
+  const list=cur?[cur,...SHOP.filter(g=>g!==cur)]:SHOP;
+  $('#shopList').innerHTML=list.map(g=>`<div class="shopg${g===cur?' cur':''}"><h3>${esc(g.title)}${g===cur?'<span class="curtag">いまの種目</span>':''}</h3>`+
+    g.links.map(([k,l])=>`<a class="shopa" href="${esc(amzUrl(k))}" target="_blank" rel="sponsored noopener">${esc(l)}</a>`).join('')+'</div>').join('')}
 $('#evAdd').addEventListener('click',()=>{setTab('data');$('#ceName').focus()});
 
 /* ================= main timer ================= */
