@@ -83,6 +83,12 @@ h3{font-size:13px;margin:0 0 8px;color:var(--muted);letter-spacing:.04em}
 .tdisp[data-st=ready]{color:var(--ready)}
 .tdisp[data-st=insp],.tdisp[data-st=arm]{color:var(--warn)}
 .hint{margin-top:10px;color:var(--muted);font-size:12px;text-align:center}
+.manbox{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:12px;max-width:440px;text-align:center}
+.manbox input{font-family:var(--f-mono);font-size:20px;width:11em}
+/* scramble drawing off: the touch areas take the freed space */
+body.nodiag .diag{display:none}
+body.nodiag .tarea{min-height:clamp(260px,52vh,560px)}
+body.nodiag .pl{min-height:280px}
 .lastbar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 .diag{display:flex;justify-content:center;padding-top:8px;overflow-x:auto}
 .diag svg{max-width:100%;height:auto}
@@ -97,6 +103,8 @@ body.running .dim{visibility:hidden}
 .list td,.list th{padding:4px 6px;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px}
 .list th{position:sticky;top:0;background:var(--surface);color:var(--muted);font-family:var(--f-body);font-weight:500;font-size:12px}
 .list tr.s{cursor:pointer}
+.list th.srt{cursor:pointer;user-select:none}
+.list th.srt:hover,.list th[aria-sort]{color:var(--accent)}
 .list tr.s:hover td{background:var(--surface2)}
 .list tr.sel td{background:var(--accent-weak)}
 .detail td{text-align:left!important;font-family:var(--f-body)!important;white-space:normal}
@@ -236,7 +244,11 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
       <div class="card">
         <div class="scrbar dim"><div id="scr" class="scr"></div><button id="scrNext" title="別の手順にする">次の手順</button></div>
         <div class="small muted dim" id="scrLab"></div>
-        <div id="tarea" class="tarea"><div id="tdisp" class="tdisp">0.00</div><div class="hint dim" id="thint">スペースキーを長押し → 緑になったら離してスタート／何かキーで停止（スマホは画面を長押し。計測中は画面のどこを触っても止まります）<br>スタート前に取り消す：長押し中に Esc か他のキー（スマホは指を枠の外へずらす）</div></div>
+        <div id="tarea" class="tarea"><div id="tdisp" class="tdisp">0.00</div><div class="hint dim" id="thint">スペースキーを長押し → 緑になったら離してスタート／何かキーで停止（スマホは画面を長押し。計測中は画面のどこを触っても止まります）<br>スタート前に取り消す：長押し中に Esc か他のキー（スマホは指を枠の外へずらす）</div>
+          <div id="manBox" class="manbox" hidden><input type="text" id="manIn" inputmode="decimal" autocomplete="off" placeholder="例 1234 / 12.34 / 1:02.34 / DNF" maxlength="20" aria-label="タイムを入力"><button id="manGo" class="pri">記録</button>
+            <div class="small muted" id="manMsg">タイムを入れて Enter。「1234」は 12.34、「12.34+」は +2、「DNF」は DNF になります。</div></div>
+          <div id="smBox" class="manbox" hidden><span class="row"><span class="dot" id="smDot"></span><span id="smSt">未接続</span></span><button id="smConn" class="pri">Stackmat につなぐ</button>
+            <div class="small muted">Stackmat / SpeedStacks タイマーをケーブルでマイク端子（スマホは変換アダプタ）につなぎ、「つなぐ」でマイクを許可してください。タイマーが止まると自動で記録します。</div></div></div>
         <div class="lastbar dim" id="lastBar">
           <button data-pen="0">OK</button><button data-pen="2000">+2</button><button data-pen="-1">DNF</button><button data-pen="del">削除</button>
         </div>
@@ -245,6 +257,8 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
           <label><input type="checkbox" id="optInsp"> インスペクション15秒</label>
           <label>長押し <select id="optHold"><option value="0">なし</option><option value="300">0.3秒</option><option value="550">0.55秒</option></select></label>
           <label><input type="checkbox" id="optHide"> 計測中はタイムを隠す</label>
+          <label><input type="checkbox" id="optDiag"> 展開図を表示</label>
+          <label>入力 <select id="optInput"><option value="touch">スペース・タッチ</option><option value="type">手入力</option><option value="stackmat">Stackmat タイマー</option></select></label>
         </div>
       </div>
       <aside class="card dim">
@@ -294,7 +308,8 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
     </div>
     <div class="card">
       <div class="row" style="justify-content:space-between"><h3 style="margin:0">ラウンド結果</h3><button id="lbNext" class="pri" disabled>次のラウンド（Enter）</button></div>
-      <p class="muted small" style="margin:6px 0 0">2人とも OK・+2・DNF を選ぶと、2秒後に次のラウンドへ進みます。</p>
+      <p class="muted small" style="margin:6px 0 0">2人とも解き終わって OK・+2・DNF を選ぶまで、次のラウンドには進めません。そろうと2秒後に次へ進みます。</p>
+      <p class="small" id="lbWait" style="margin:4px 0 0"></p>
       <div class="tbl" id="lbHist" style="margin-top:8px"></div>
     </div>
   </section>
@@ -314,7 +329,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
         <div><h3>ルームを作る</h3><div class="row"><label for="onEv">種目</label><select id="onEv"></select><button id="onCreate" class="pri">作成</button></div></div>
         <div><h3>コードで参加</h3><div class="row"><input type="text" id="onCode" placeholder="例 cl-k7p2q9" style="width:11em" maxlength="48"><button id="onJoin">参加</button></div></div>
       </div>
-      <p class="note" style="margin-top:12px">相手にもこのページのリンクを開いてもらい、同じルームコードで参加します。どちらも同じ手順で解き、ラウンドごとに速いほうが勝ち。自分のペースで次へ進めます。<span id="onVia"></span></p>
+      <p class="note" style="margin-top:12px">相手にもこのページのリンクを開いてもらい、同じルームコードで参加します。どちらも同じ手順で解き、ラウンドごとに速いほうが勝ち。全員が解き終わって結果（OK・+2・DNF）を選ぶと、次のラウンドに進めます。<span id="onVia"></span></p>
       <p class="muted small" id="onErr"></p>
     </div>
     <div id="onRoom" class="tab" hidden>
@@ -331,6 +346,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
         <div class="diag" id="onDiag"></div>
         <div id="onArea" class="tarea"><div id="onDisp" class="tdisp">0.00</div><div class="hint">スペース長押し → 離してスタート（スマホは長押し）／計測中は画面のどこを触っても止まります<br>長押し中に Esc か指を枠の外へずらすと取り消し</div></div>
         <div class="lastbar" id="onPen" hidden><button data-op="0">OK</button><button data-op="2000">+2</button><button data-op="-1">DNF</button></div>
+        <p class="small" id="onWait" style="margin:8px 0 0;text-align:center"></p>
       </div>
       <div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">結果</h3><div class="score" id="onScore"></div></div><div class="tbl" id="onTable" style="margin-top:8px"></div></div>
     </div>
@@ -598,29 +614,39 @@ function makeMega(){
 }
 
 function makeSq1(){
-  const SIDE={b:'#2563d6',r:'#e0302f',f:'#25a244',l:'#ff8c1a'};
-  const LAY=[['E','b'],['C','b','r'],['E','r'],['C','r','f'],['E','f'],['C','f','l'],['E','l'],['C','l','b']];
-  const layer=(base,off)=>{const c=[];let id=off;LAY.forEach(p=>{if(p[0]==='E')c.push({id,base,side:SIDE[p[1]]});else c.push({id,base,side:SIDE[p[1]]},{id,base,side:SIDE[p[2]]});id++});return c};
-  const solved=()=>({t:layer('#ffffff',0),d:layer('#ffd500',8),m:0});
+  /* Same pieces, colours and picture as TNoodle (WCA): its positions 0-23 hold pieces 0-15 (top 0-7 with even = corner, bottom 8-15
+     with odd = corner); colours U yellow, D white, F red, B orange, L blue, R green. Our cells are numbered clockwise seen from the top,
+     starting at the back end of the slash line: our top cell k is TNoodle's top position (k+6)%12, our bottom cell k its bottom position (5-k) mod 12. */
+  const TN=[0,0,1,2,2,3,4,4,5,6,6,7,8,9,9,10,11,11,12,13,13,14,15,15];
+  const SC={L:'#2563d6',B:'#ff8c1a',R:'#25a244',F:'#e0302f',U:'#ffd500',D:'#ffffff'},LBRF='LBRF';
+  const isC=p=>p<=7?p%2===0:p%2===1;
+  const cols=p=>{const up=p<=7,top=up?SC.U:SC.D;if(isC(p)){const q=up?p:15-p;let a=SC[LBRF[((q>>1)+3)%4]],b=SC[LBRF[q>>1]];if(!up)[a,b]=[b,a];return[top,a,b]}
+    return[top,SC[LBRF[(up?p:14-p)>>1]]]};
+  const solved=()=>({t:[...Array(12)].map((_,k)=>({id:TN[(k+6)%12]})),d:[...Array(12)].map((_,k)=>({id:TN[12+mod(5-k,12)]})),m:0});
   const turn=(st,x,y)=>{const t=[],d=[];for(let i=0;i<12;i++){t[mod(i+x,12)]=st.t[i];d[mod(i-y,12)]=st.d[i]}return{t,d,m:st.m}};
   const can=st=>st.t[11].id!==st.t[0].id&&st.t[5].id!==st.t[6].id&&st.d[11].id!==st.d[0].id&&st.d[5].id!==st.d[6].id;
   const slash=st=>{const t=st.t.slice(),d=st.d.slice();for(let i=0;i<6;i++){t[5-i]=st.d[i];d[5-i]=st.t[i]}return{t,d,m:st.m^1}};
-  const P=(cx,cy,r,deg)=>{const a=deg*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)]};
-  const sector=(cx,cy,r0,r1,a0,a1,fill)=>{const p=[P(cx,cy,r1,a0),P(cx,cy,r1,a1)];if(r0===0)return`<path d="M${cx},${cy} L${p[0][0].toFixed(1)},${p[0][1].toFixed(1)} A${r1},${r1} 0 0 1 ${p[1][0].toFixed(1)},${p[1][1].toFixed(1)} Z" fill="${fill}" stroke="var(--sticker-line)" stroke-width="1"/>`;
-    const q=[P(cx,cy,r0,a1),P(cx,cy,r0,a0)];return`<path d="M${p[0][0].toFixed(1)},${p[0][1].toFixed(1)} A${r1},${r1} 0 0 1 ${p[1][0].toFixed(1)},${p[1][1].toFixed(1)} L${q[0][0].toFixed(1)},${q[0][1].toFixed(1)} A${r0},${r0} 0 0 0 ${q[1][0].toFixed(1)},${q[1][1].toFixed(1)} Z" fill="${fill}" stroke="var(--sticker-line)" stroke-width="1"/>`};
-  const drawLayer=(cells,cx,cy,mirror)=>{const R=62,R1=44;let b='';const ang=i=>mirror?[-90-30*i-30,-90-30*i]:[-90+30*i,-90+30*i+30];
-    let i=0;while(i<12){let j=i;while(j+1<12&&cells[j+1].id===cells[i].id)j++;
-      if(i===0&&cells[11].id===cells[0].id){i=j+1;continue}
-      const cs=[];for(let k=i;k<=j;k++)cs.push(k);if(j===11&&cells[0].id===cells[11].id){let k=0;while(cells[k].id===cells[11].id){cs.push(k);k++}}
-      const a0=mirror?ang(cs[cs.length-1])[0]:ang(cs[0])[0],a1=mirror?ang(cs[0])[1]:ang(cs[cs.length-1])[1];
-      b+=sector(cx,cy,0,R1,a0,a1,cells[cs[0]].base);cs.forEach(k=>{const[s0,s1]=ang(k);b+=sector(cx,cy,R1,R,s0,s1,cells[k].side)});i=j+1}
-    b+=`<line x1="${cx}" y1="${cy-R-6}" x2="${cx}" y2="${cy+R+6}" stroke="var(--muted)" stroke-dasharray="3 3"/>`;return b};
+  // TNoodle's drawing: each face is drawn from its position 0, top starting at 105° and bottom at -105° (screen angles, clockwise),
+  // 30° per cell; the bottom face is seen from below with the front at the top. r = edge radius, m = width of the coloured rim.
+  const r=30,m=1.4,RM=Math.SQRT2*Math.cos(Math.PI/12),FW=2*RM*m*r;
+  const pa=(d,l)=>[l*Math.cos(d*Math.PI/180),l*Math.sin(d*Math.PI/180)];
+  const T=pa(30,RM*r),mT=pa(30,RM*r*m),C60=pa(60,r),mC60=pa(60,r*m),E30=pa(30,r),mE30=pa(30,r*m);
+  const SHAPE={c:[[[0,0],[r,0],T,C60],[[r,0],[m*r,0],mT,T],[mT,T,C60,mC60]],e:[[[0,0],[r,0],E30],[[r,0],[m*r,0],mE30,E30]]};
+  const drawFace=(ids,cx,cy,start)=>{let s=0;while(s<12&&ids[s]===ids[mod(s-1,12)])s++;if(s===12)s=0;let b='';
+    for(let n=0;n<12;){const c=mod(s+n,12),id=ids[c],corner=isC(id)&&ids[mod(c+1,12)]===id,a=(start+30*c)*Math.PI/180,co=Math.cos(a),si=Math.sin(a);
+      const cl=cols(id);(corner?SHAPE.c:SHAPE.e).forEach((pg,i)=>{b+=poly(pg.map(([x,y])=>[cx+x*co-y*si,cy+x*si+y*co]),cl[i])});n+=corner?2:1}
+    return b};
   return{
     solved,turn,can,slash,
     apply(st,scr){const re=/\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)|\//g;let m;while((m=re.exec(scr))){if(m[0]==='/'){if(can(st))st=slash(st)}else st=turn(st,+m[1],+m[2])}return st},
-    svg(st){const b=drawLayer(st.t,72,74,false)+drawLayer(st.d,222,74,true)+
-      `<text x="72" y="160" text-anchor="middle" font-size="11" fill="var(--muted)">上面</text><text x="222" y="160" text-anchor="middle" font-size="11" fill="var(--muted)">下面（下から見た図）</text><text x="147" y="176" text-anchor="middle" font-size="11" fill="var(--muted)">中層：${st.m?'ずれている':'そろっている'}</text>`;
-      return svgWrap(294,182,b)}
+    // TNoodle's 24 positions (piece numbers) for a state
+    tn:st=>[...Array(12)].map((_,p)=>st.t[(p+6)%12].id).concat([...Array(12)].map((_,q)=>st.d[mod(5-q,12)].id)),
+    svg(st){const v=this.tn(st),cx=FW/2,hw=m*r*Math.cos(Math.PI/12),bh=r*(m-1),cut=hw*Math.tan(Math.PI/12),X=FW+8,txt=(y,s)=>`<text x="${X}" y="${y}" font-size="11" fill="var(--muted)">${s}</text>`;
+      const b=drawFace(v.slice(0,12),cx,FW/2,105)+drawFace(v.slice(12),cx,FW*1.5,-105)+
+        `<rect x="${(cx-hw).toFixed(1)}" y="${(FW-bh/2).toFixed(1)}" width="${(hw-cut).toFixed(1)}" height="${bh.toFixed(1)}" fill="${SC.F}" stroke="var(--sticker-line)"/>`+
+        `<rect x="${(cx-cut).toFixed(1)}" y="${(FW-bh/2).toFixed(1)}" width="${(hw+cut).toFixed(1)}" height="${bh.toFixed(1)}" fill="${st.m?SC.B:SC.F}" stroke="var(--sticker-line)"/>`+
+        txt(FW/2,'上面')+txt(FW+4,'中層：'+(st.m?'ずれている':'そろっている'))+txt(FW*1.5-7,'下面')+txt(FW*1.5+8,'（下から見た図・')+txt(FW*1.5+22,'手前が上）');
+      return svgWrap(FW+118,2*FW,b)}
   };
 }
 
@@ -764,6 +790,9 @@ function sq1RS(rng){let s=sqSolved();
   // a (0,0) between two slashes means "/ /", which cancels
   for(let i=1;i<turns.length-1;i++)if(!mod(turns[i][0],12)&&!mod(turns[i][1],12)){turns.splice(i-1,3,[turns[i-1][0]+turns[i+1][0],turns[i-1][1]+turns[i+1][1]]);i=0}
   const inv=turns.slice().reverse().map(([x,y])=>[sqNorm(-x),sqNorm(-y)]),out=[];
+  // the solver's solved state is WCA's (TNoodle's) solved Square-1 with both layers 30° off the slash line; the (1,-1) that turns
+  // WCA's solved state into it is folded into the first turn, so the scramble starts from the cube as WCA holds it
+  inv[0]=[sqNorm(inv[0][0]+1),sqNorm(inv[0][1]-1)];
   inv.forEach(([x,y],i)=>{if(i)out.push('/');if(x||y)out.push(`(${x},${y})`)});return out.join(' ')}
 function clockScramble(rng){const a=()=>{const v=ri(rng,12)-5;return Math.abs(v)+(v<0?'-':'+')};
   return['UR','DR','DL','UL','U','R','D','L','ALL'].map(m=>m+a()).join(' ')+' y2 '+['U','R','D','L','ALL'].map(m=>m+a()).join(' ')}
@@ -873,7 +902,7 @@ const KEY='cubelab.v1';
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const SNAP='cubelab.snapshot',RESCUE='cubelab.rescue-';
 const META0=()=>({lastExport:0,exportedCount:0,snapDay:''});
-function freshDB(){return{v:1,ev:'333',sessions:[],cur:{},custom:[],battles:[],meta:META0(),settings:{inspect:false,hold:300,hide:false,nick:'',p1:'プレイヤー1',p2:'プレイヤー2',targets:{}}}}
+function freshDB(){return{v:1,ev:'333',sessions:[],cur:{},custom:[],battles:[],meta:META0(),settings:{inspect:false,hold:300,hide:false,diag:true,input:'touch',subs:{},nick:'',p1:'プレイヤー1',p2:'プレイヤー2',targets:{}}}}
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
 // a newer/older version number alone never resets records; anything without a sessions list is not usable
 function normalizeDB(d){if(!d||typeof d!=='object'||!Array.isArray(d.sessions))return null;
@@ -1057,10 +1086,12 @@ $('#evAdd').addEventListener('click',()=>{setTab('data');$('#ceName').focus()});
 /* ================= main timer ================= */
 let curScr='',curLab='',curPend=false,scrTok=0,openRow=-1;
 async function nextMain(){const tok=++scrTok,ev=eventById(DB.ev);curScr='';curPend=true;renderScr();const r=await makeScr(ev,rand32());if(tok!==scrTok)return;curScr=r.s;curLab=r.lab;curPend=false;renderScr()}
-const mainT=new STimer({el:$('#tdisp'),opts:timerOpts,
+// every way of timing (space / touch, typed, Stackmat) ends here
+function addSolve(t,p){document.body.classList.remove('running');const s=curSession();s.solves.push({t,p,s:curScr,d:Date.now()});save();nextMain();openRow=-1;renderMain()}
+const mainT=new STimer({el:$('#tdisp'),opts:timerOpts,locked:()=>DB.settings.input!=='touch',
   onStart:()=>document.body.classList.add('running'),
   onCancel:()=>document.body.classList.remove('running'),
-  onStop:({t,p})=>{document.body.classList.remove('running');const s=curSession();s.solves.push({t,p,s:curScr,d:Date.now()});save();nextMain();openRow=-1;renderMain()},
+  onStop:({t,p})=>addSolve(t,p),
   idleText:()=>{const s=curSession().solves;return s.length?fmtSolve(s[s.length-1]):'0.00'}});
 bindTouch($('#tarea'),mainT);
 $('#scrNext').addEventListener('click',()=>nextMain());
@@ -1074,6 +1105,63 @@ function setPen(sess,i,v){if(v==='del'){sess.solves.splice(i,1)}else sess.solves
 $('#lastBar').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const s=curSession();if(!s.solves.length)return;setPen(s,s.solves.length-1,b.dataset.pen)});
 ['optInsp','optHide'].forEach(id=>$('#'+id).addEventListener('change',e=>{DB.settings[id==='optInsp'?'inspect':'hide']=e.target.checked;save()}));
 $('#optHold').addEventListener('change',e=>{DB.settings.hold=+e.target.value;save()});
+$('#optDiag').addEventListener('change',e=>{DB.settings.diag=e.target.checked;save();applyMode()});
+$('#optInput').addEventListener('change',e=>{DB.settings.input=e.target.value;save();mainT.cancel();if(e.target.value!=='stackmat')smStop();applyMode()});
+function applyMode(){const m=DB.settings.input||'touch';document.body.classList.toggle('nodiag',DB.settings.diag===false);
+  $('#manBox').hidden=m!=='type';$('#smBox').hidden=m!=='stackmat';$('#thint').hidden=m!=='touch';$('#tarea').style.cursor=m==='touch'?'':'default'}
+
+/* typed times: "1234" = 12.34, "12345" = 1:23.45, "12.34", "1:02.34", "DNF", "DNF(12.34)", "12.34+" or "12.34+2" = +2 */
+function parseManual(str){let s=String(str||'').trim().toUpperCase().replace(/\s+/g,''),p=0;if(!s)return null;
+  const d=s.match(/^DNF\(?([^)]*)\)?$/);if(d){p=-1;s=d[1]}else{const q=s.match(/^(.*?)\+2?$/);if(q){p=2000;s=q[1]}}
+  let t=null,m;
+  if(/^\d+$/.test(s)){const v=s.padStart(5,'0'),mn=+v.slice(0,-4),sc=+v.slice(-4,-2),cs=+v.slice(-2);if(sc<60||!mn)t=(mn*60+sc)*1000+cs*10}
+  else if((m=s.match(/^(\d+):(\d{1,2})(?:\.(\d{1,3}))?$/))&&+m[2]<60)t=(+m[1]*60+ +m[2])*1000+(m[3]?+m[3].padEnd(3,'0'):0);
+  else if((m=s.match(/^(\d*)\.(\d{1,3})$/))||(m=s.match(/^(\d+)\.?$/)))t=+(m[1]||0)*1000+(m[2]?+m[2].padEnd(3,'0'):0);
+  else if(p===-1&&s==='')t=0;
+  if(t==null||(t<=0&&p!==-1)||t>=36e6)return null;return{t,p}}
+function manSave(){const r=parseManual($('#manIn').value);if(!r){$('#manMsg').textContent='読み取れませんでした。例：1234（12.34）、12.34、1:02.34、DNF、12.34+';return}
+  addSolve(r.t,r.p);$('#manIn').value='';$('#manMsg').textContent='記録しました：'+fmtSolve(r);$('#manIn').focus()}
+$('#manGo').addEventListener('click',manSave);
+$('#manIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();manSave()}});
+
+/* Stackmat / SpeedStacks timer through the microphone jack: 1200 baud serial, 8N1, either polarity.
+   A packet is status char + 5 (Gen 2) or 6 (Gen 3-5) digits + checksum (64 + digit sum) + "\n\r". */
+class SMDecoder{
+  constructor(rate,cb){this.bl=rate/1200;this.cb=cb;this.env=0;this.lvl=1;this.u=[0,1].map(()=>({ph:-1,cnt:0,byte:0,prev:1,buf:[]}))}
+  push(x){
+    this.env=Math.max(Math.abs(x),this.env*.9995);const th=Math.max(.004,this.env*.25);
+    // hysteresis keeps the level through the slow sag an AC-coupled input puts on long runs
+    if(x>th)this.lvl=1;else if(x<-th)this.lvl=0;
+    for(let k=0;k<2;k++){const u=this.u[k],bit=this.lvl^k;
+      if(u.ph<0){if(u.prev===1&&bit===0){u.ph=0;u.cnt=0;u.byte=0}}
+      else{u.cnt++;const at=u.ph===0?.5*this.bl:(u.ph+.5)*this.bl;
+        if(u.cnt>=at){if(u.ph===0){if(bit!==0){u.ph=-1}else u.ph=1}
+          else if(u.ph<=8){u.byte|=bit<<(u.ph-1);u.ph++}
+          else{if(bit===1)this.byte(u,u.byte);else u.buf=[];u.ph=-1}}}
+      u.prev=bit}}
+  feed(a){for(let i=0;i<a.length;i++)this.push(a[i])}
+  byte(u,b){u.buf.push(b);if(u.buf.length>12)u.buf.shift();const n=u.buf.length;if(n<9||u.buf[n-2]!==10||u.buf[n-1]!==13)return;
+    for(const L of[10,9]){if(n<L)continue;const c=u.buf.slice(n-L),st=String.fromCharCode(c[0]),dg=c.slice(1,L-3);
+      if(!'IASLRC '.includes(st)||!dg.every(v=>v>=48&&v<=57))continue;const v=dg.map(x=>x-48);if(c[L-3]!==64+v.reduce((a,b)=>a+b,0))continue;
+      u.buf=[];this.cb({st,ms:v[0]*60000+(v[1]*10+v[2])*1000+v[3]*100+v[4]*10+(v[5]||0)});return}}
+}
+const SM={ctx:null,stream:null,node:null,last:0,run:false,done:false,timer:0};
+function smShow(dot,text){$('#smDot').className='dot'+(dot?' '+dot:'');$('#smSt').textContent=text}
+function smPacket(p){const first=!SM.last||performance.now()-SM.last>1000;SM.last=performance.now();if(first)smShow('on','タイマーとつながっています');
+  if(DB.settings.input!=='stackmat'||TAB!=='timer')return;const el=$('#tdisp');
+  if(p.st===' '&&p.ms>0){SM.run=true;SM.done=false;document.body.classList.add('running');el.dataset.st='run';el.textContent=DB.settings.hide?'計測中':fmt(p.ms);return}
+  if(SM.run&&p.ms>0){SM.run=false;SM.done=true;addSolve(p.ms,0);return}
+  if(p.ms===0){SM.done=false;el.dataset.st=p.st==='A'||p.st==='C'?'ready':p.st==='L'||p.st==='R'?'hold':'idle';if(el.dataset.st!=='idle')el.textContent='0.00';else mainT.render()}}
+async function smStart(){if(SM.stream)return;smShow('','マイクの許可を待っています…');
+  try{SM.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}})}
+  catch(e){SM.stream=null;smShow('','マイクを使えませんでした（許可されていないか、この画面では使えません）');return}
+  const AC=window.AudioContext||window.webkitAudioContext;SM.ctx=new AC();const src=SM.ctx.createMediaStreamSource(SM.stream),dec=new SMDecoder(SM.ctx.sampleRate,smPacket);
+  SM.node=SM.ctx.createScriptProcessor(4096,1,1);SM.node.onaudioprocess=e=>dec.feed(e.inputBuffer.getChannelData(0));src.connect(SM.node);SM.node.connect(SM.ctx.destination);
+  SM.last=0;smShow('solving','つながりました。タイマーの電源を入れてください');$('#smConn').textContent='切断';
+  SM.timer=setInterval(()=>{if(SM.last&&performance.now()-SM.last>1500){SM.last=0;smShow('solving','信号がありません（タイマーの電源・ケーブルを確かめてください）')}},700)}
+function smStop(){clearInterval(SM.timer);if(SM.node)SM.node.disconnect();if(SM.stream)SM.stream.getTracks().forEach(t=>t.stop());if(SM.ctx)SM.ctx.close().catch(()=>{});
+  Object.assign(SM,{ctx:null,stream:null,node:null,last:0,run:false});document.body.classList.remove('running');$('#smConn').textContent='Stackmat につなぐ';smShow('','未接続')}
+$('#smConn').addEventListener('click',()=>SM.stream?smStop():smStart());
 
 function renderSessions(){const s=curSession();$('#sessSel').innerHTML=sessionsOf(DB.ev).map(x=>`<option value="${x.id}"${x.id===s.id?' selected':''}>${esc(x.name)}（${x.solves.length}）</option>`).join('');$('#sessName').value=s.name}
 $('#sessSel').addEventListener('change',e=>{DB.cur[DB.ev]=e.target.value;save();renderMain()});
@@ -1103,22 +1191,32 @@ $('#tgIn').addEventListener('input',e=>{const v=parseFloat(e.target.value);DB.se
 // today's solves of an event across all its sessions, in solve order
 function todayStats(ev){const k=dayKey(Date.now()),sv=[];sessionsOf(ev).forEach(s=>s.solves.forEach(v=>{if(dayKey(v.d)===k)sv.push(v)}));sv.sort((a,b)=>a.d-b.d);
   const ts=sv.map(eff);return{n:ts.length,best:bestOf(ts),mean:basic(ts).mean,dnf:ts.filter(t=>t===Infinity).length,ao5:bestOf(rolling(ts,5)),ao12:bestOf(rolling(ts,12))}}
-function renderToday(){const t=todayStats(DB.ev),el=$('#today');
+// "under N seconds": N is set per event (default 10); counted per day over all sessions of the event
+const subOf=ev=>{const v=+((DB.settings.subs||{})[ev]);return v>0?v:10};
+function subDays(ev){const X=subOf(ev)*1000,m=new Map();sessionsOf(ev).forEach(s=>s.solves.forEach(v=>{const k=dayKey(v.d);if(!m.has(k))m.set(k,{k,n:0,c:0});const o=m.get(k);o.n++;if(eff(v)<X)o.c++}));
+  return[...m.values()].sort((a,b)=>a.k<b.k?-1:1)}
+function renderToday(){const t=todayStats(DB.ev),el=$('#today'),sd=subDays(DB.ev).find(d=>d.k===dayKey(Date.now()));
   el.innerHTML=`<b class="small">今日の記録</b> <span class="muted small">（この種目の全セッション）</span>`+(t.n?`<div class="nxg"><span class="muted small">ベスト</span><span class="num best">${fmt(t.best)}</span><span class="muted small">平均</span><span class="num">${fmt(t.mean)}</span>`+
-    `<span class="muted small">ベストao5</span><span class="num">${fmt(t.ao5)}</span><span class="muted small">回数</span><span class="num">${t.n}${t.dnf?`<span class="muted small">（DNF ${t.dnf}）</span>`:''}</span></div>`:`<p class="muted small" style="margin:4px 0 0">今日はまだ解いていません。</p>`)}
+    `<span class="muted small">ベストao5</span><span class="num">${fmt(t.ao5)}</span><span class="muted small">回数</span><span class="num">${t.n}${t.dnf?`<span class="muted small">（DNF ${t.dnf}）</span>`:''}</span><span class="muted small">${fmt(subOf(DB.ev)*1000)}秒未満</span><span class="num best">${sd?sd.c:0}回</span></div>`:`<p class="muted small" style="margin:4px 0 0">今日はまだ解いていません。</p>`)}
 function renderMain(){renderSessions();renderScr();renderBk();renderToday();const s=curSession(),ts=s.solves.map(eff);
   const r5=rolling(ts,5),r12=rolling(ts,12),r100=rolling(ts,100),n=ts.length,b=basic(ts);
   const cur=a=>n?a[n-1]:null;
   $('#qs').innerHTML=`<div class="h"></div><div class="h">現在</div><div class="h">ベスト</div>`+
     [['単発',ts,1],['ao5',r5,5],['ao12',r12,12],['ao100',r100,100]].map(([l,a,N])=>`<div class="h">${l}</div><div>${avBtn(N,a,n-1)}</div><div>${avBtn(N,a,a.indexOf(bestOf(a)))}</div>`).join('')+
     `<div class="h">平均</div><div>${fmt(b.mean)}</div><div class="muted">${n}回</div>`;
-  const best=bestOf(ts);let rows='';const lim=Math.max(0,n-500);
-  for(let i=n-1;i>=lim;i--){const sv=s.solves[i];rows+=`<tr class="s${openRow===i?' sel':''}" data-i="${i}"><td class="muted">${i+1}</td><td class="${ts[i]===best?'best':ts[i]===Infinity?'dnf':''}">${fmtSolve(sv)}</td><td>${avBtn(5,r5,i)}</td><td>${avBtn(12,r12,i)}</td></tr>`;
+  const best=bestOf(ts);let rows='';
+  // newest first, or (header tapped) fastest first by that column; DNF and "not yet" go last
+  const col=LSORT==='t'?ts:LSORT==='a5'?r5:LSORT==='a12'?r12:null,key=i=>col[i]==null?2e15:col[i]===Infinity?1e15:col[i];
+  const order=[...Array(n).keys()].reverse();if(col)order.sort((a,b)=>key(a)-key(b)||b-a);
+  for(const i of order.slice(0,500)){const sv=s.solves[i];rows+=`<tr class="s${openRow===i?' sel':''}" data-i="${i}"><td class="muted">${i+1}</td><td class="${ts[i]===best?'best':ts[i]===Infinity?'dnf':''}">${fmtSolve(sv)}</td><td>${avBtn(5,r5,i)}</td><td>${avBtn(12,r12,i)}</td></tr>`;
     if(openRow===i)rows+=`<tr class="detail"><td colspan="4"><div class="small muted">${esc(new Date(sv.d).toLocaleString('ja-JP'))}</div><div class="num small" style="white-space:pre-line;margin:4px 0">${esc(sv.s||'')}</div><div class="row"><button data-rp="0">OK</button><button data-rp="2000">+2</button><button data-rp="-1">DNF</button><button data-rp="del">削除</button></div></td></tr>`}
-  $('#solveList').innerHTML=n?`<table><thead><tr><th>#</th><th>タイム</th><th>ao5</th><th>ao12</th></tr></thead><tbody>${rows}</tbody></table>`:`<div class="empty">まだ記録がありません。<br>スペースキーで計測を始めましょう。<br><button style="margin-top:10px" onclick="setTab('move')">csTimer の記録を移す</button></div>`;
+  $('#solveList').innerHTML=n?`<table><thead><tr>${[['n','#'],['t','タイム'],['a5','ao5'],['a12','ao12']].map(([k,l])=>`<th class="srt" data-sort="${k}" title="${k==='n'?'新しい順に戻す':'押すと速い順（もう一度で元の順）'}"${LSORT===k?' aria-sort="ascending"':''}>${l}${LSORT===k?' ▲':''}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`:`<div class="empty">まだ記録がありません。<br>スペースキーで計測を始めましょう。<br><button style="margin-top:10px" onclick="setTab('move')">csTimer の記録を移す</button></div>`;
   renderNext(ts,cur(r5));
-  $('#optInsp').checked=DB.settings.inspect;$('#optHide').checked=DB.settings.hide;$('#optHold').value=String(DB.settings.hold);mainT.render()}
-$('#solveList').addEventListener('click',e=>{const b=e.target.closest('button[data-rp]');if(b){setPen(curSession(),openRow,b.dataset.rp);return}
+  $('#optInsp').checked=DB.settings.inspect;$('#optHide').checked=DB.settings.hide;$('#optHold').value=String(DB.settings.hold);
+  $('#optDiag').checked=DB.settings.diag!==false;$('#optInput').value=DB.settings.input||'touch';applyMode();mainT.render()}
+let LSORT='';
+$('#solveList').addEventListener('click',e=>{const h=e.target.closest('th[data-sort]');if(h){const k=h.dataset.sort;LSORT=k==='n'||LSORT===k?'':k;renderMain();return}
+  const b=e.target.closest('button[data-rp]');if(b){setPen(curSession(),openRow,b.dataset.rp);return}
   const tr=e.target.closest('tr.s');if(tr){const i=+tr.dataset.i;openRow=openRow===i?-1:i;renderMain()}});
 
 /* ================= charts ================= */
@@ -1180,8 +1278,11 @@ function renderStats(){const ev=eventById(DB.ev),s=curSession(),ts=s.solves.map(
   <div class="sgrid">
     <div class="card"><h2>タイムの分布</h2><canvas id="cvHist"></canvas><p class="muted small">赤い点線：条件チェックの目標タイム</p></div>
     <div class="card"><h2>日ごとの記録</h2><div class="tbl" style="max-height:260px;overflow:auto" id="dayTbl"></div></div>
-  </div>`+battleHtml;
-  renderCond(ts,s);drawGrowth(ts,s);histogram($('#cvHist'),ts,COND.X*1000);
+  </div>
+  <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">N秒未満の回数（日ごと）</h2><label class="small"><input type="number" id="subIn" min="0.01" step="0.01" value="${subOf(DB.ev)}"> 秒未満</label></div>
+    <p class="muted small" style="margin:4px 0 8px">この種目の全セッションを日ごとに数えています（DNF は数えません）。秒数は種目ごとに覚えます。</p>
+    <canvas id="cvSub"></canvas><div class="tbl" style="max-height:260px;overflow:auto;margin-top:8px" id="subTbl"></div></div>`+battleHtml;
+  renderCond(ts,s);drawGrowth(ts,s);histogram($('#cvHist'),ts,COND.X*1000);renderSub();
   const days=groupDays(s);$('#dayTbl').innerHTML=`<table><thead><tr><th>日付</th><th>回数</th><th>平均</th><th>ベスト</th><th>ベストao5</th></tr></thead><tbody>${days.slice().reverse().map(d=>`<tr><td class="t">${d.k}</td><td>${d.n}</td><td>${fmt(d.mean)}</td><td>${fmt(d.best)}</td><td>${fmt(d.ao5)}</td></tr>`).join('')}</tbody></table>`}
 function groupDays(s){const m=new Map();s.solves.forEach(v=>{const k=dayKey(v.d);if(!m.has(k))m.set(k,[]);m.get(k).push(eff(v))});
   return[...m].sort((a,b)=>a[0]<b[0]?-1:1).map(([k,ts])=>({k,n:ts.length,mean:basic(ts).mean,best:bestOf(ts),ao5:bestOf(rolling(ts,5))}))}
@@ -1199,9 +1300,19 @@ function drawGrowth(ts,s){const cv=$('#cvGrowth');if(!cv)return;const A=cssv('--
     $('#lgGrowth').innerHTML=`<span><i style="background:${A}"></i>その日の平均</span><span><i style="background:${G}"></i>その日のベスト</span>`}}
 $('#stBody').addEventListener('click',e=>{const m=e.target.closest('[data-m]');if(m){chartMode=m.dataset.m;renderStats();return}
   const c=e.target.closest('[data-c]');if(c){const[w,k]=c.dataset.c.split(',');COND.W=+w;COND.K=+k;renderStats()}});
+// last 30 days with solves as bars (count under N), newest on the right; the table lists every day
+function renderSub(){const cv=$('#cvSub');if(!cv)return;const d=subDays(DB.ev),N=subOf(DB.ev);
+  $('#subTbl').innerHTML=d.length?`<table><thead><tr><th>日付</th><th>回数</th><th>${fmt(N*1000)}秒未満</th><th>割合</th></tr></thead><tbody>${d.slice().reverse().map(x=>`<tr><td class="t">${x.k}</td><td>${x.n}</td><td class="${x.c?'best':''}">${x.c}</td><td>${(x.c/x.n*100).toFixed(1)}%</td></tr>`).join('')}</tbody></table>`:'';
+  const v=d.slice(-30),{c,w,h}=setupCanvas(cv,180),L=34,R=10,T=10,B=26;c.clearRect(0,0,w,h);if(!v.length)return;
+  const mx=Math.max(1,...v.map(x=>x.c)),bw=(w-L-R)/v.length;c.font='11px '+cssv('--f-mono');c.fillStyle=cssv('--muted');c.strokeStyle=cssv('--line');c.textAlign='right';
+  [0,.5,1].forEach(f=>{const y=T+(1-f)*(h-T-B);c.beginPath();c.moveTo(L,y);c.lineTo(w-R,y);c.stroke();c.fillText(Math.round(mx*f),L-4,y+4)});
+  v.forEach((x,i)=>{const bh=x.c/mx*(h-T-B);c.fillStyle=cssv('--good');c.fillRect(L+i*bw+1,h-B-bh,Math.max(1,bw-2),bh)});
+  c.fillStyle=cssv('--muted');c.textAlign='center';const every=Math.ceil(v.length/7);v.forEach((x,i)=>{if(i%every===0)c.fillText(x.k.slice(5),L+i*bw+bw/2,h-8)})}
+$('#stBody').addEventListener('change',e=>{if(e.target.id!=='subIn')return;const v=parseFloat(e.target.value);if(!(v>0))return;
+  DB.settings.subs=DB.settings.subs||{};DB.settings.subs[DB.ev]=Math.round(v*100)/100;save();renderSub();renderToday()});
 $('#stBody').addEventListener('input',e=>{if(!['cW','cK','cX'].includes(e.target.id))return;const v=parseFloat(e.target.value);if(!(v>0))return;COND[e.target.id.slice(1)]=v;
   const s=curSession(),ts=s.solves.map(eff);renderCond(ts,s);histogram($('#cvHist'),ts,COND.X*1000)});
-addEventListener('resize',()=>{if(TAB==='stats'){const s=curSession(),ts=s.solves.map(eff);if(ts.length){drawGrowth(ts,s);histogram($('#cvHist'),ts,COND.X*1000)}}});
+addEventListener('resize',()=>{if(TAB==='stats'){const s=curSession(),ts=s.solves.map(eff);if(ts.length){drawGrowth(ts,s);histogram($('#cvHist'),ts,COND.X*1000);renderSub()}}});
 
 /* battle records */
 function upsertBattle(rec){const i=DB.battles.findIndex(b=>b.k===rec.k);if(i>=0){const o=DB.battles[i];if(o.a.t===rec.a.t&&o.b.t===rec.b.t)return;DB.battles[i]=rec}else DB.battles.push(rec);save()}
@@ -1229,7 +1340,9 @@ LT.forEach((t,k)=>{bindTouch($('#pl'+(k+1)),t);bindTouch($('#fh'+(k+1)),t);
 function lbRecord(){const ev=eventById(LB.ev);LB.rounds.forEach((r,i)=>{if(!lbDone(r))return;
   upsertBattle({k:'L'+LB.id+':'+i,d:Date.now(),ev:ev.name,mode:'local',a:{n:DB.settings.p1,t:r.a.p===-1?-1:r.a.t+r.a.p},b:{n:DB.settings.p2,t:r.b.p===-1?-1:r.b.t+r.b.p}})})}
 const lbStop=()=>{clearTimeout(LB.auto);LB.auto=0};
-function lbNext(){const r=lbCur();if(!lbDone(r))return;lbStop();r.a.ok=r.b.ok=true;lbNewRound();LT.forEach(t=>t.reset());renderLocal()}
+// the next round waits until both players have finished and picked OK / +2 / DNF
+const lbConfirmed=r=>lbDone(r)&&r.a.ok&&r.b.ok;
+function lbNext(){const r=lbCur();if(!lbConfirmed(r)){if(TAB==='local')toast('全員が結果を選ぶまで次のラウンドには進めません');return}lbStop();lbNewRound();LT.forEach(t=>t.reset());renderLocal()}
 function lbRestart(){lbStop();LB.id=uid();LB.rounds=[];lbNewRound();LT.forEach(t=>t.reset());renderLocal()}
 $('#lbNext').addEventListener('click',lbNext);
 $('#lbReset').addEventListener('click',()=>{lbRestart();toast('新しい対戦を始めました')});
@@ -1255,7 +1368,9 @@ function renderLocal(){const ev=eventById(LB.ev),r=lbCur();$('#p1n').value=DB.se
   $('#lbSum').textContent=`${ev.name}・${DB.settings.p1} vs ${DB.settings.p2}`;
   let w1=0,w2=0;const rows=LB.rounds.map((x,i)=>{if(!lbDone(x))return'';const a=eff(x.a),b=eff(x.b);if(a<b)w1++;else if(b<a)w2++;
     return`<tr><td class="t">${i+1}</td><td class="${a<b?'best':''}">${fmtSolve(x.a)}</td><td class="${b<a?'best':''}">${fmtSolve(x.b)}</td><td class="t">${a<b?esc(DB.settings.p1):b<a?esc(DB.settings.p2):'引き分け'}</td></tr>`}).reverse().join('');
-  $('#lbScore').textContent=w1+' - '+w2;$('#lbNext').disabled=!lbDone(r);
+  $('#lbScore').textContent=w1+' - '+w2;$('#lbNext').disabled=!lbConfirmed(r);
+  const wait=[0,1].filter(k=>{const x=r[k?'b':'a'];return!x||!x.ok}).map(k=>{const x=r[k?'b':'a'];return DB.settings[k?'p2':'p1']+(x?'（結果を選んでいます）':LT[k].st==='run'?'（計測中）':'（まだ解いていません）')});
+  $('#lbWait').textContent=wait.length?'待っています：'+wait.join('、'):'全員そろいました。2秒後に次のラウンドへ進みます。';
   const done=lbDone(r),a=r.a&&eff(r.a),b=r.b&&eff(r.b);
   $('#lbHist').innerHTML=rows?`<table><thead><tr><th>R</th><th>${esc(DB.settings.p1)}</th><th>${esc(DB.settings.p2)}</th><th>勝者</th></tr></thead><tbody>${rows}</tbody></table>`:'<p class="muted" style="margin:0">2人とも解き終わると、ここに結果が並びます。</p>';
   [0,1].forEach(k=>{const res=r[k?'b':'a'],win=!!done&&(k?b<a:a<b),pen=!!res&&!res.ok&&LT[k].st!=='run',n=k+1;
@@ -1273,11 +1388,17 @@ const onRes=()=>ON.raw.map(r=>r.p===-1?-1:r.t+r.p);
 // both players derive the same seed from room code + round, so they get the same scramble
 function onScramble(r){if(!ON.ev)return{s:'',pend:false,lab:''};const k=ON.code+'#'+r;if(!ON.scrs[k]){const o=ON.scrs[k]={s:'',pend:true,lab:''};
   makeScr(ON.ev,hashStr(k)).then(x=>{o.s=x.s;o.lab=x.lab;o.pend=false;if(TAB==='online')renderOnline()})}return ON.scrs[k]}
-function onPresence(){if(!ON.nr)return;ON.nr.presence({nick:DB.settings.nick||'ゲスト',def:ON.def,res:onRes(),st:ON.st}).catch(()=>{})}
+// cf = how many of my results are confirmed (OK / +2 / DNF picked); older pages that do not send it count every result as confirmed
+const onCf=()=>{let n=0;while(n<ON.raw.length&&ON.raw[n].ok!==false)n++;return n};
+function onPresence(){if(!ON.nr)return;ON.nr.presence({nick:DB.settings.nick||'ゲスト',def:ON.def,res:onRes(),cf:onCf(),st:ON.st}).catch(()=>{})}
+const pcf=p=>typeof p.presence.cf==='number'?Math.min(p.presence.cf,pres(p).length):pres(p).length;
+// who the next round is waiting for: me until I confirm, everyone else until they have finished and confirmed the round I am on
+function onWaiting(){const n=ON.raw.length,w=[];if(n&&ON.raw[n-1].ok===false)w.push({n:(DB.settings.nick||'ゲスト')+'（あなた）',s:'結果を選んでください'});
+  others().forEach(p=>{if(pcf(p)<n)w.push({n:pnick(p),s:p.presence.st==='solving'?'計測中':pres(p).length>=n?'結果を選んでいます':'まだ解いていません'})});return w}
 // OK / +2 / DNF only show after a stop (until the next start), so a stray touch cannot change a result mid-solve
-const onT=new STimer({el:$('#onDisp'),opts:timerOpts,locked:()=>!ON.ev||ON.raw.length>=150,
+const onT=new STimer({el:$('#onDisp'),opts:timerOpts,locked:()=>{if(!ON.ev||ON.raw.length>=150)return true;if(onWaiting().length){toast('全員が結果を選ぶまで次のラウンドは始められません');return true}return false},
   onStart:()=>{ON.st='solving';$('#onPen').hidden=true;onPresence()},onCancel:()=>{ON.st='idle';onPresence()},
-  onStop:({t,p})=>{ON.raw.push({t,p});ON.st='idle';onPresence();renderOnline()},
+  onStop:({t,p})=>{ON.raw.push({t,p,ok:false});ON.st='idle';onPresence();renderOnline()},
   idleText:()=>ON.raw.length?fmtSolve(ON.raw[ON.raw.length-1]):'0.00'});
 bindTouch($('#onArea'),onT);
 
@@ -1325,7 +1446,7 @@ $('#onCreate').addEventListener('click',()=>{const id=$('#onEv').value;onEnter('
 $('#onJoin').addEventListener('click',()=>onEnter($('#onCode').value,null));
 $('#onLeave').addEventListener('click',async()=>{if(ON.nr){try{await ON.nr.leave()}catch(e){}}ON.nr=null;ON.ev=null;ON.def=null;ON.peers=[];onT.reset();renderOnline()});
 $('#onCopy').addEventListener('click',()=>{const t=ON.code;navigator.clipboard.writeText(t).then(()=>toast('コードをコピーしました')).catch(()=>{const r=document.createRange();r.selectNodeContents($('#onCodeShow'));getSelection().removeAllRanges();getSelection().addRange(r);toast('選択しました。コピーしてください')})});
-document.querySelector('#onRoom').addEventListener('click',e=>{const b=e.target.closest('button[data-op]');if(!b||!ON.raw.length||onT.st==='run')return;ON.raw[ON.raw.length-1].p=+b.dataset.op;onPresence();onT.render();onRecord();renderOnline()});
+document.querySelector('#onRoom').addEventListener('click',e=>{const b=e.target.closest('button[data-op]');if(!b||!ON.raw.length||onT.st==='run')return;const last=ON.raw[ON.raw.length-1];last.p=+b.dataset.op;last.ok=true;onPresence();onT.render();onRecord();renderOnline()});
 function others(){return ON.peers.filter(p=>!p.sameTab&&p.kind==='viewer'&&p.presence&&typeof p.presence.nick==='string')}
 const pnick=p=>String(p.presence.nick).replace(/[\u0000-\u001f]/g,'').slice(0,20)||'ゲスト';
 const pres=p=>Array.isArray(p.presence.res)?p.presence.res.slice(0,150).map(v=>typeof v==='number'?v:null):[];
@@ -1344,7 +1465,8 @@ function renderOnline(){$('#onNick').value=DB.settings.nick||'';$('#onEv').inner
     if(full){const m=Math.min(...vals);if(vals.filter(v=>v===m).length===1&&m!==Infinity){bi=vals.indexOf(m);wins[bi]++}}
     rows=`<tr><td class="t">${i+1}</td>${vals.map((v,k)=>`<td class="${k===bi?'best':''}">${v==null?'<span class="muted">…</span>':fmt(v)}</td>`).join('')}</tr>`+rows}
   $('#onScore').textContent=cols.length>1?wins.join(' - '):'';
-  $('#onPen').hidden=!(ON.raw.length&&onT.st==='done');
+  $('#onPen').hidden=!(ON.raw.length&&onT.st!=='run'&&ON.raw[ON.raw.length-1].ok===false);
+  const wt=onWaiting();$('#onWait').textContent=!ON.raw.length&&!wt.length?'':wt.length?'次のラウンドを待っています：'+wt.map(x=>x.n+'（'+x.s+'）').join('、'):'全員そろいました。次のラウンドを始められます。';
   $('#onTable').innerHTML=max?`<table><thead><tr><th>R</th>${cols.map(c=>`<th>${esc(c.n)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`:'<p class="muted" style="margin:0">解き終わると結果がここに並びます。</p>';onT.render()}
 
 /* ================= WCA ================= */
