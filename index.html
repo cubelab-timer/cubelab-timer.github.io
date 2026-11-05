@@ -1197,7 +1197,16 @@ function subDays(ev){const X=subOf(ev)*1000,m=new Map();sessionsOf(ev).forEach(s
   return[...m.values()].sort((a,b)=>a.k<b.k?-1:1)}
 function renderToday(){const t=todayStats(DB.ev),el=$('#today'),sd=subDays(DB.ev).find(d=>d.k===dayKey(Date.now()));
   el.innerHTML=`<b class="small">今日の記録</b> <span class="muted small">（この種目の全セッション）</span>`+(t.n?`<div class="nxg"><span class="muted small">ベスト</span><span class="num best">${fmt(t.best)}</span><span class="muted small">平均</span><span class="num">${fmt(t.mean)}</span>`+
-    `<span class="muted small">ベストao5</span><span class="num">${fmt(t.ao5)}</span><span class="muted small">回数</span><span class="num">${t.n}${t.dnf?`<span class="muted small">（DNF ${t.dnf}）</span>`:''}</span><span class="muted small">${fmt(subOf(DB.ev)*1000)}秒未満</span><span class="num best">${sd?sd.c:0}回</span></div>`:`<p class="muted small" style="margin:4px 0 0">今日はまだ解いていません。</p>`)}
+    `<span class="muted small">ベストao5</span><span class="num">${fmt(t.ao5)}</span><span class="muted small">回数</span><span class="num">${t.n}${t.dnf?`<span class="muted small">（DNF ${t.dnf}）</span>`:''}</span><span class="muted small"><button class="avl" id="subTap" title="タップで秒数を変更">${fmt(subOf(DB.ev)*1000)}秒未満</button></span><span class="num best">${sd?sd.c:0}回</span></div>`:`<p class="muted small" style="margin:4px 0 0">今日はまだ解いていません。</p>`)}
+// tapping the "N秒未満" label edits N in place (same per-event value as #subIn); Enter/blur saves, Esc cancels
+function setSub(v){DB.settings.subs=DB.settings.subs||{};DB.settings.subs[DB.ev]=Math.round(v*100)/100;save();
+  const si=$('#subIn');if(si)si.value=subOf(DB.ev);renderSub();renderToday()}
+$('#today').addEventListener('click',e=>{const b=e.target.closest('#subTap');if(!b)return;
+  const inp=document.createElement('input');inp.type='number';inp.min='0.01';inp.step='0.01';inp.value=subOf(DB.ev);inp.style.width='4.5em';inp.setAttribute('aria-label','秒数');
+  let done=false;const fin=ok=>{if(done)return;done=true;const v=parseFloat(inp.value);if(ok&&v>0)setSub(v);else renderToday()};
+  inp.addEventListener('keydown',k=>{k.stopPropagation();if(k.key==='Enter'){k.preventDefault();fin(true)}else if(k.key==='Escape'){k.preventDefault();fin(false)}});
+  inp.addEventListener('blur',()=>fin(true));
+  const w=document.createElement('span');w.append(inp,' 秒未満');b.replaceWith(w);inp.focus();inp.select()});
 function renderMain(){renderSessions();renderScr();renderBk();renderToday();const s=curSession(),ts=s.solves.map(eff);
   const r5=rolling(ts,5),r12=rolling(ts,12),r100=rolling(ts,100),n=ts.length,b=basic(ts);
   const cur=a=>n?a[n-1]:null;
@@ -1308,8 +1317,7 @@ function renderSub(){const cv=$('#cvSub');if(!cv)return;const d=subDays(DB.ev),N
   [0,.5,1].forEach(f=>{const y=T+(1-f)*(h-T-B);c.beginPath();c.moveTo(L,y);c.lineTo(w-R,y);c.stroke();c.fillText(Math.round(mx*f),L-4,y+4)});
   v.forEach((x,i)=>{const bh=x.c/mx*(h-T-B);c.fillStyle=cssv('--good');c.fillRect(L+i*bw+1,h-B-bh,Math.max(1,bw-2),bh)});
   c.fillStyle=cssv('--muted');c.textAlign='center';const every=Math.ceil(v.length/7);v.forEach((x,i)=>{if(i%every===0)c.fillText(x.k.slice(5),L+i*bw+bw/2,h-8)})}
-$('#stBody').addEventListener('change',e=>{if(e.target.id!=='subIn')return;const v=parseFloat(e.target.value);if(!(v>0))return;
-  DB.settings.subs=DB.settings.subs||{};DB.settings.subs[DB.ev]=Math.round(v*100)/100;save();renderSub();renderToday()});
+$('#stBody').addEventListener('change',e=>{if(e.target.id!=='subIn')return;const v=parseFloat(e.target.value);if(!(v>0))return;setSub(v)});
 $('#stBody').addEventListener('input',e=>{if(!['cW','cK','cX'].includes(e.target.id))return;const v=parseFloat(e.target.value);if(!(v>0))return;COND[e.target.id.slice(1)]=v;
   const s=curSession(),ts=s.solves.map(eff);renderCond(ts,s);histogram($('#cvHist'),ts,COND.X*1000)});
 addEventListener('resize',()=>{if(TAB==='stats'){const s=curSession(),ts=s.solves.map(eff);if(ts.length){drawGrowth(ts,s);histogram($('#cvHist'),ts,COND.X*1000);renderSub()}}});
