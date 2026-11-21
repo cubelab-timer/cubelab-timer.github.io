@@ -110,6 +110,9 @@ body.running .dim{visibility:hidden}
 .detail td{text-align:left!important;font-family:var(--f-body)!important;white-space:normal}
 .best{color:var(--good);font-weight:700}
 .dnf{color:var(--bad)}
+.rk1{color:var(--rk1,#1fa055);font-weight:700}.rk2{color:var(--rk2,#e0463c);font-weight:700}.rk3{color:var(--rk3,#2f6fe0);font-weight:700}
+.rkset input[type=color]{width:28px;height:24px;padding:0 2px;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer}
+.rkset .ghost{padding:2px 8px;font-size:12px}
 
 /* stats */
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
@@ -259,6 +262,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
           <label><input type="checkbox" id="optHide"> Hide time while solving</label>
           <label><input type="checkbox" id="optDiag"> Show scramble image</label>
           <label>Input <select id="optInput"><option value="touch">Space / touch</option><option value="type">Type times</option><option value="stackmat">Stackmat timer</option></select></label>
+          <span class="rkset row" style="gap:6px" title="Colours for the 3 fastest times in the solve list">Top 3 colours <label class="small">1st<input type="color" id="rk1" aria-label="1st place colour"></label><label class="small">2nd<input type="color" id="rk2" aria-label="2nd place colour"></label><label class="small">3rd<input type="color" id="rk3" aria-label="3rd place colour"></label><button id="rkReset" class="ghost">Reset</button></span>
         </div>
       </div>
       <aside class="card dim">
@@ -902,7 +906,8 @@ const KEY='cubelab.v1';
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const SNAP='cubelab.snapshot',RESCUE='cubelab.rescue-';
 const META0=()=>({lastExport:0,exportedCount:0,snapDay:''});
-function freshDB(){return{v:1,ev:'333',sessions:[],cur:{},custom:[],battles:[],meta:META0(),settings:{inspect:false,hold:300,hide:false,diag:true,input:'touch',subs:{},nick:'',p1:'Player 1',p2:'Player 2',targets:{}}}}
+const RK0=['#1fa055','#e0463c','#2f6fe0'];
+function freshDB(){return{v:1,ev:'333',sessions:[],cur:{},custom:[],battles:[],meta:META0(),settings:{inspect:false,hold:300,hide:false,diag:true,input:'touch',subs:{},nick:'',p1:'Player 1',p2:'Player 2',targets:{},rankColors:RK0.slice()}}}
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
 // a newer/older version number alone never resets records; anything without a sessions list is not usable
 function normalizeDB(d){if(!d||typeof d!=='object'||!Array.isArray(d.sessions))return null;
@@ -1105,6 +1110,10 @@ function setPen(sess,i,v){if(v==='del'){sess.solves.splice(i,1)}else sess.solves
 $('#lastBar').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const s=curSession();if(!s.solves.length)return;setPen(s,s.solves.length-1,b.dataset.pen)});
 ['optInsp','optHide'].forEach(id=>$('#'+id).addEventListener('change',e=>{DB.settings[id==='optInsp'?'inspect':'hide']=e.target.checked;save()}));
 $('#optHold').addEventListener('change',e=>{DB.settings.hold=+e.target.value;save()});
+const rkColors=()=>{const c=DB.settings.rankColors;return[0,1,2].map(k=>Array.isArray(c)&&/^#[0-9a-f]{6}$/i.test(c[k]||'')?c[k]:RK0[k])};
+function applyRankColors(){const c=rkColors();c.forEach((v,k)=>{document.documentElement.style.setProperty('--rk'+(k+1),v);const el=$('#rk'+(k+1));if(el&&document.activeElement!==el)el.value=v})}
+[1,2,3].forEach(n=>$('#rk'+n).addEventListener('input',e=>{const c=rkColors();c[n-1]=e.target.value;DB.settings.rankColors=c;applyRankColors();save()}));
+$('#rkReset').addEventListener('click',()=>{DB.settings.rankColors=RK0.slice();applyRankColors();save()});
 $('#optDiag').addEventListener('change',e=>{DB.settings.diag=e.target.checked;save();applyMode()});
 $('#optInput').addEventListener('change',e=>{DB.settings.input=e.target.value;save();mainT.cancel();if(e.target.value!=='stackmat')smStop();applyMode()});
 function applyMode(){const m=DB.settings.input||'touch';document.body.classList.toggle('nodiag',DB.settings.diag===false);
@@ -1213,16 +1222,17 @@ function renderMain(){renderSessions();renderScr();renderBk();renderToday();cons
   $('#qs').innerHTML=`<div class="h"></div><div class="h">current</div><div class="h">best</div>`+
     [['single',ts,1],['ao5',r5,5],['ao12',r12,12],['ao100',r100,100]].map(([l,a,N])=>`<div class="h">${l}</div><div>${avBtn(N,a,n-1)}</div><div>${avBtn(N,a,a.indexOf(bestOf(a)))}</div>`).join('')+
     `<div class="h">mean</div><div>${fmt(b.mean)}</div><div class="muted">${n} solves</div>`;
-  const best=bestOf(ts);let rows='';
+  // fastest three distinct times (DNF excluded) get the 1st/2nd/3rd colours
+  const top=[...new Set(ts.filter(t=>t!=null&&t!==Infinity))].sort((a,b)=>a-b).slice(0,3);let rows='';
   // newest first, or (header tapped) fastest first by that column; DNF and "not yet" go last
   const col=LSORT==='t'?ts:LSORT==='a5'?r5:LSORT==='a12'?r12:null,key=i=>col[i]==null?2e15:col[i]===Infinity?1e15:col[i];
   const order=[...Array(n).keys()].reverse();if(col)order.sort((a,b)=>key(a)-key(b)||b-a);
-  for(const i of order.slice(0,500)){const sv=s.solves[i];rows+=`<tr class="s${openRow===i?' sel':''}" data-i="${i}"><td class="muted">${i+1}</td><td class="${ts[i]===best?'best':ts[i]===Infinity?'dnf':''}">${fmtSolve(sv)}</td><td>${avBtn(5,r5,i)}</td><td>${avBtn(12,r12,i)}</td></tr>`;
+  for(const i of order.slice(0,500)){const sv=s.solves[i];rows+=`<tr class="s${openRow===i?' sel':''}" data-i="${i}"><td class="muted">${i+1}</td><td class="${top.includes(ts[i])?'rk'+(top.indexOf(ts[i])+1):ts[i]===Infinity?'dnf':''}">${fmtSolve(sv)}</td><td>${avBtn(5,r5,i)}</td><td>${avBtn(12,r12,i)}</td></tr>`;
     if(openRow===i)rows+=`<tr class="detail"><td colspan="4"><div class="small muted">${esc(new Date(sv.d).toLocaleString('en-US'))}</div><div class="num small" style="white-space:pre-line;margin:4px 0">${esc(sv.s||'')}</div><div class="row"><button data-rp="0">OK</button><button data-rp="2000">+2</button><button data-rp="-1">DNF</button><button data-rp="del">Delete</button></div></td></tr>`}
   $('#solveList').innerHTML=n?`<table><thead><tr>${[['n','#'],['t','Time'],['a5','ao5'],['a12','ao12']].map(([k,l])=>`<th class="srt" data-sort="${k}" title="${k==='n'?'Back to newest first':'Tap for fastest first (tap again to undo)'}"${LSORT===k?' aria-sort="ascending"':''}>${l}${LSORT===k?' ▲':''}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`:`<div class="empty">No solves yet.<br>Press Space to start timing.<br><button style="margin-top:10px" onclick="setTab('move')">Import from csTimer</button></div>`;
   renderNext(ts,cur(r5));
   $('#optInsp').checked=DB.settings.inspect;$('#optHide').checked=DB.settings.hide;$('#optHold').value=String(DB.settings.hold);
-  $('#optDiag').checked=DB.settings.diag!==false;$('#optInput').value=DB.settings.input||'touch';applyMode();mainT.render()}
+  $('#optDiag').checked=DB.settings.diag!==false;$('#optInput').value=DB.settings.input||'touch';applyMode();applyRankColors();mainT.render()}
 let LSORT='';
 $('#solveList').addEventListener('click',e=>{const h=e.target.closest('th[data-sort]');if(h){const k=h.dataset.sort;LSORT=k==='n'||LSORT===k?'':k;renderMain();return}
   const b=e.target.closest('button[data-rp]');if(b){setPen(curSession(),openRow,b.dataset.rp);return}
