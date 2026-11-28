@@ -262,7 +262,7 @@ dialog.dlg::backdrop{background:rgb(0 0 0 / .45)}
           <label><input type="checkbox" id="optHide"> Hide time while solving</label>
           <label><input type="checkbox" id="optDiag"> Show scramble image</label>
           <label>Input <select id="optInput"><option value="touch">Space / touch</option><option value="type">Type times</option><option value="stackmat">Stackmat timer</option></select></label>
-          <span class="rkset row" style="gap:6px" title="Colours for the 3 fastest times in the solve list">Top 3 colours <label class="small">1st<input type="color" id="rk1" aria-label="1st place colour"></label><label class="small">2nd<input type="color" id="rk2" aria-label="2nd place colour"></label><label class="small">3rd<input type="color" id="rk3" aria-label="3rd place colour"></label><button id="rkReset" class="ghost">Reset</button></span>
+          <span class="rkset row" style="gap:6px" title="Colours for the 3 fastest singles, ao5s and ao12s in the solve list">Top 3 colours <label class="small">1st<input type="color" id="rk1" aria-label="1st place colour"></label><label class="small">2nd<input type="color" id="rk2" aria-label="2nd place colour"></label><label class="small">3rd<input type="color" id="rk3" aria-label="3rd place colour"></label><button id="rkReset" class="ghost">Reset</button></span>
         </div>
       </div>
       <aside class="card dim">
@@ -1222,12 +1222,12 @@ function renderMain(){renderSessions();renderScr();renderBk();renderToday();cons
   $('#qs').innerHTML=`<div class="h"></div><div class="h">current</div><div class="h">best</div>`+
     [['single',ts,1],['ao5',r5,5],['ao12',r12,12],['ao100',r100,100]].map(([l,a,N])=>`<div class="h">${l}</div><div>${avBtn(N,a,n-1)}</div><div>${avBtn(N,a,a.indexOf(bestOf(a)))}</div>`).join('')+
     `<div class="h">mean</div><div>${fmt(b.mean)}</div><div class="muted">${n} solves</div>`;
-  // fastest three distinct times (DNF excluded) get the 1st/2nd/3rd colours
-  const top=[...new Set(ts.filter(t=>t!=null&&t!==Infinity))].sort((a,b)=>a-b).slice(0,3);let rows='';
+  // fastest three distinct times (DNF excluded) get the 1st/2nd/3rd colours, separately for singles, ao5 and ao12
+  const top3=a=>[...new Set(a.filter(t=>t!=null&&t!==Infinity))].sort((x,y)=>x-y).slice(0,3),top=top3(ts),top5=top3(r5),top12=top3(r12),rkc=(T,v)=>T.includes(v)?'rk'+(T.indexOf(v)+1):'';let rows='';
   // newest first, or (header tapped) fastest first by that column; DNF and "not yet" go last
   const col=LSORT==='t'?ts:LSORT==='a5'?r5:LSORT==='a12'?r12:null,key=i=>col[i]==null?2e15:col[i]===Infinity?1e15:col[i];
   const order=[...Array(n).keys()].reverse();if(col)order.sort((a,b)=>key(a)-key(b)||b-a);
-  for(const i of order.slice(0,500)){const sv=s.solves[i];rows+=`<tr class="s${openRow===i?' sel':''}" data-i="${i}"><td class="muted">${i+1}</td><td class="${top.includes(ts[i])?'rk'+(top.indexOf(ts[i])+1):ts[i]===Infinity?'dnf':''}">${fmtSolve(sv)}</td><td>${avBtn(5,r5,i)}</td><td>${avBtn(12,r12,i)}</td></tr>`;
+  for(const i of order.slice(0,500)){const sv=s.solves[i];rows+=`<tr class="s${openRow===i?' sel':''}" data-i="${i}"><td class="muted">${i+1}</td><td class="${top.includes(ts[i])?'rk'+(top.indexOf(ts[i])+1):ts[i]===Infinity?'dnf':''}">${fmtSolve(sv)}</td><td class="${rkc(top5,r5[i])}">${avBtn(5,r5,i)}</td><td class="${rkc(top12,r12[i])}">${avBtn(12,r12,i)}</td></tr>`;
     if(openRow===i)rows+=`<tr class="detail"><td colspan="4"><div class="small muted">${esc(new Date(sv.d).toLocaleString('en-US'))}</div><div class="num small" style="white-space:pre-line;margin:4px 0">${esc(sv.s||'')}</div><div class="row"><button data-rp="0">OK</button><button data-rp="2000">+2</button><button data-rp="-1">DNF</button><button data-rp="del">Delete</button></div></td></tr>`}
   $('#solveList').innerHTML=n?`<table><thead><tr>${[['n','#'],['t','Time'],['a5','ao5'],['a12','ao12']].map(([k,l])=>`<th class="srt" data-sort="${k}" title="${k==='n'?'Back to newest first':'Tap for fastest first (tap again to undo)'}"${LSORT===k?' aria-sort="ascending"':''}>${l}${LSORT===k?' ▲':''}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`:`<div class="empty">No solves yet.<br>Press Space to start timing.<br><button style="margin-top:10px" onclick="setTab('move')">Import from csTimer</button></div>`;
   renderNext(ts,cur(r5));
