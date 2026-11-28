@@ -34,6 +34,23 @@
     document.head.appendChild(s);
   }
 
+  // Works without a connection: home-screen app details + a service worker (sw.js) that keeps a copy of the site
+  (function offline(){
+    const root = EN ? '../' : '';
+    const add = (tag, attrs) => {
+      if (document.head.querySelector(`${tag}[${Object.keys(attrs)[0]}="${Object.values(attrs)[0]}"]`)) return;
+      const el = document.createElement(tag); for (const k in attrs) el.setAttribute(k, attrs[k]); document.head.appendChild(el);
+    };
+    add('link', {rel: 'manifest', href: 'manifest.webmanifest'});
+    add('link', {rel: 'apple-touch-icon', href: root + 'apple-touch-icon.png'});
+    add('meta', {name: 'apple-mobile-web-app-capable', content: 'yes'});
+    add('meta', {name: 'mobile-web-app-capable', content: 'yes'});
+    add('meta', {name: 'apple-mobile-web-app-title', content: 'CubeLab'});
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      window.addEventListener('load', () => { navigator.serviceWorker.register(root + 'sw.js').catch(() => {}); });
+    }
+  })();
+
   function fillAds(){
     document.querySelectorAll('.adslot').forEach(el => {
       if (!S.adsenseClient || el.dataset.filled) { el.hidden = !S.adsenseClient; return; }
